@@ -247,7 +247,7 @@ pub struct LivenessResponse {
     pub status: String,
 }
 
-/// System build and runtime version metadata.
+/// Sanitized service version information.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, ironic::OpenApiSchema)]
 pub struct SystemVersionResponse {
     /// Service identifier.
@@ -406,17 +406,17 @@ pub fn enrich_openapi_spec(spec: &mut serde_json::Value) {
         get_op.insert("tags".into(), serde_json::json!(["System & Health"]));
         get_op.insert(
             "summary".into(),
-            serde_json::json!("System build and version information"),
+            serde_json::json!("Service version information"),
         );
         get_op.insert(
             "description".into(),
-            serde_json::json!("Returns current version, git revision SHA, and build metadata."),
+            serde_json::json!("Returns sanitized service identifier and operational status. Extended diagnostics require administrative authentication."),
         );
         get_op.insert(
             "responses".into(),
             serde_json::json!({
                 "200": {
-                    "description": "Build and runtime version metadata",
+                    "description": "Sanitized service version information",
                     "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SystemVersionResponse" } } }
                 }
             }),

@@ -226,6 +226,7 @@ impl BlobStorePort for UpstashBlobStore {
 #[derive(Clone)]
 pub struct S3BlobStore {
     endpoint: String,
+    public_endpoint: Option<String>,
     bucket: String,
     region: String,
     access_key: String,
@@ -253,8 +254,21 @@ impl S3BlobStore {
         access_key: String,
         secret_key: String,
     ) -> Self {
+        Self::with_public_endpoint(endpoint, None, bucket, region, access_key, secret_key)
+    }
+
+    #[must_use]
+    pub fn with_public_endpoint(
+        endpoint: String,
+        public_endpoint: Option<String>,
+        bucket: String,
+        region: String,
+        access_key: String,
+        secret_key: String,
+    ) -> Self {
         Self {
             endpoint: endpoint.trim_end_matches('/').to_owned(),
+            public_endpoint: public_endpoint.map(|p| p.trim_end_matches('/').to_owned()),
             bucket: bucket.trim_matches('/').to_owned(),
             region,
             access_key,
@@ -450,8 +464,9 @@ impl BlobStorePort for S3BlobStore {
     ) -> BoxFuture<'a, Result<String, ServerError>> {
         Box::pin(async move {
             let _ = self.object_path_and_url(key)?;
+            let host_endpoint = self.public_endpoint.as_deref().unwrap_or(&self.endpoint);
             Ok(super::s3_sigv4::presign_get_url(
-                &self.endpoint,
+                host_endpoint,
                 &self.bucket,
                 key,
                 &self.region,

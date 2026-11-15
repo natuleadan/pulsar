@@ -88,8 +88,9 @@ impl InfrastructureRegistry {
             &config.s3_access_key,
             &config.s3_secret_key,
         ) {
-            let store = S3BlobStore::with_region(
+            let store = S3BlobStore::with_public_endpoint(
                 endpoint.clone(),
+                config.s3_public_endpoint.clone(),
                 config.s3_bucket.clone(),
                 config.s3_region.clone(),
                 ak.clone(),
