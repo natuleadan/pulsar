@@ -90,6 +90,7 @@ pub async fn build_test_harness_with_config(config: ServerConfig) -> TestHarness
         identity_store: IdentityStore(Arc::new(InMemoryIdentityRepository::default())),
         a2a_store: A2aTaskStore(Arc::new(InMemoryA2aRepository::default())),
         provider_store: Default::default(),
+        secret_store: Default::default(),
     };
 
     let app = build_application(infra)

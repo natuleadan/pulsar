@@ -10,6 +10,7 @@ pub mod identity;
 pub mod mcp;
 pub mod nodes;
 pub mod providers;
+pub mod secrets;
 pub mod sessions;
 pub mod swarm;
 pub mod tasks;

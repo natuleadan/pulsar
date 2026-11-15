@@ -183,6 +183,25 @@ impl std::fmt::Debug for InferenceEndpointSpec {
     }
 }
 
+/// Scoped host credential injected by Boxer's outbound proxy without exposing plaintext to agents.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProxyCredentialSpec {
+    pub host: String,
+    pub header_name: String,
+    pub header_value: String,
+}
+
+impl std::fmt::Debug for ProxyCredentialSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProxyCredentialSpec")
+            .field("host", &self.host)
+            .field("header_name", &self.header_name)
+            .field("header_value", &"[REDACTED]")
+            .finish()
+    }
+}
+
 /// Task request dispatched from Server to Boxer via NATS JetStream.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -204,6 +223,8 @@ pub struct TaskRequest {
     pub exec: ExecOptions,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub inference: Option<InferenceEndpointSpec>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub proxy_credentials: Vec<ProxyCredentialSpec>,
 }
 
 /// Active lease granted to a Boxer worker for executing a task.

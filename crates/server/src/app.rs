@@ -66,6 +66,7 @@ use crate::{
             InMemoryProviderRepository, PgProviderRepository, ProviderService, ProviderStore,
             ProvidersModule,
         },
+        secrets::{InMemorySecretRepository, PgSecretRepository, SecretStore, SecretsModule},
         sessions::{
             SessionsModule,
             repositories::{InMemorySessionRepository, PgSessionRepository, SessionStore},
@@ -116,6 +117,7 @@ impl Module for InfraModule {
             .provider(ProviderDefinition::value(IdentityStore::default()))
             .provider(ProviderDefinition::value(A2aTaskStore::default()))
             .provider(ProviderDefinition::value(ProviderStore::default()))
+            .provider(ProviderDefinition::value(SecretStore::default()))
             .export::<ServerConfig>()
             .export::<AppCache>()
             .export::<AppEventBus>()
@@ -138,6 +140,7 @@ impl Module for InfraModule {
             .export::<IdentityStore>()
             .export::<A2aTaskStore>()
             .export::<ProviderStore>()
+            .export::<SecretStore>()
             .lifecycle(
                 LifecycleDefinition::builder::<SecurityLifecycleHook>()
                     .guard_denied()
@@ -170,6 +173,7 @@ impl Module for InfraModule {
     IdentityModule,
     A2aModule,
     ProvidersModule,
+    SecretsModule,
 ])]
 pub struct AppModule;
 
@@ -193,6 +197,7 @@ pub struct InfrastructureHandles {
     pub identity_store: IdentityStore,
     pub a2a_store: A2aTaskStore,
     pub provider_store: ProviderStore,
+    pub secret_store: SecretStore,
 }
 
 impl InfrastructureHandles {
@@ -231,6 +236,7 @@ impl InfrastructureHandles {
             identity_store,
             a2a_store,
             provider_store,
+            secret_store,
         ) = match database.as_ref() {
             Some(db) => {
                 let pool = db.pool().clone();
@@ -245,7 +251,8 @@ impl InfrastructureHandles {
                     AutocronStore(PgAutocronRepository::new(pool.clone())),
                     IdentityStore(Arc::new(PgIdentityRepository::new(pool.clone()))),
                     A2aTaskStore(Arc::new(PgA2aRepository::new(pool.clone()))),
-                    ProviderStore(Arc::new(PgProviderRepository::new(pool))),
+                    ProviderStore(Arc::new(PgProviderRepository::new(pool.clone()))),
+                    SecretStore(Arc::new(PgSecretRepository::new(pool))),
                 )
             }
             None => (
@@ -260,6 +267,7 @@ impl InfrastructureHandles {
                 IdentityStore(Arc::new(InMemoryIdentityRepository::default())),
                 A2aTaskStore(Arc::new(InMemoryA2aRepository::default())),
                 ProviderStore(Arc::new(InMemoryProviderRepository::default())),
+                SecretStore(Arc::new(InMemorySecretRepository::default())),
             ),
         };
 
@@ -282,6 +290,7 @@ impl InfrastructureHandles {
             identity_store,
             a2a_store,
             provider_store,
+            secret_store,
         })
     }
 
@@ -314,6 +323,7 @@ impl InfrastructureHandles {
             identity_store: IdentityStore(Arc::new(InMemoryIdentityRepository::default())),
             a2a_store: A2aTaskStore(Arc::new(InMemoryA2aRepository::default())),
             provider_store: ProviderStore(Arc::new(InMemoryProviderRepository::default())),
+            secret_store: SecretStore(Arc::new(InMemorySecretRepository::default())),
         }
     }
 }
@@ -391,6 +401,7 @@ pub async fn build_application(
         .override_provider(ProviderDefinition::value(infra.identity_store))
         .override_provider(ProviderDefinition::value(infra.a2a_store))
         .override_provider(ProviderDefinition::value(infra.provider_store))
+        .override_provider(ProviderDefinition::value(infra.secret_store))
         .middleware(SecurityHeadersMiddleware::new(
             SecurityHeadersConfig::default(),
         ))
@@ -482,10 +493,8 @@ pub async fn build_application(
     });
     let _ = lazy_mcp.set(McpHttpState { auth, mcp });
     let _ = lazy_nodes.set(NodeHttpState { service: nodes });
-
     Ok(app)
 }
 
-pub use crate::infra::workers::{start_autocron_worker, start_retention_worker};
-
 pub use crate::infra::webui::mount_native_stream_and_mcp_routes;
+pub use crate::infra::workers::{start_autocron_worker, start_retention_worker};

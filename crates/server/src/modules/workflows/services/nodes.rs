@@ -101,6 +101,7 @@ pub async fn execute_single_node(
                 sandbox: None,
                 exec: ExecOptions::default(),
                 inference: None,
+                proxy_credentials: Vec::new(),
             };
             bus.0.publish_task_request(&req).await?;
             Ok(json!({ "dispatched": true, "taskId": req.task_id }))

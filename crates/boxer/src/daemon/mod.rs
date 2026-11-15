@@ -243,12 +243,14 @@ impl BoxerDaemon {
         };
 
         let _proxy = if req.exec.network_egress {
+            let (allowed_hosts, creds) =
+                agent_bridge::build_proxy_credentials_for_task(&self.config, &req);
             Some(
                 OutboundCredentialProxy::start_with_identity(
                     self.config.proxy_bind_addr,
                     true,
-                    self.config.proxy_allowed_hosts.clone(),
-                    agent_bridge::build_proxy_credentials(&self.config),
+                    allowed_hosts,
+                    creds,
                     EgressIdentityPolicy::from_env(),
                 )
                 .await?,

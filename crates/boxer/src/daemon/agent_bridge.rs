@@ -59,6 +59,30 @@ pub fn build_proxy_credentials(config: &BoxerConfig) -> Vec<CredentialRule> {
     rules
 }
 
+/// Merges node-level proxy credentials with scoped task-level credentials from `agents-server`.
+#[must_use]
+pub fn build_proxy_credentials_for_task(
+    config: &BoxerConfig,
+    req: &TaskRequest,
+) -> (Vec<String>, Vec<CredentialRule>) {
+    let mut allowed_hosts = config.proxy_allowed_hosts.clone();
+    let mut rules = build_proxy_credentials(config);
+    for cred in &req.proxy_credentials {
+        if !allowed_hosts
+            .iter()
+            .any(|h| h.eq_ignore_ascii_case(&cred.host))
+        {
+            allowed_hosts.push(cred.host.clone());
+        }
+        rules.push(CredentialRule {
+            host: cred.host.clone(),
+            header_name: cred.header_name.clone(),
+            header_value: cred.header_value.clone(),
+        });
+    }
+    (allowed_hosts, rules)
+}
+
 struct SandboxShellTool {
     driver: Arc<dyn SandboxDriver>,
     task_id: String,

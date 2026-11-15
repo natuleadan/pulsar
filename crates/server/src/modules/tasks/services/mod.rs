@@ -25,6 +25,7 @@ use crate::{
         audit::services::AuditService,
         auth::{entities::AuthenticatedActor, guards::ensure_owner, services::StateStore},
         providers::services::ProviderService,
+        secrets::services::SecretService,
         sessions::services::SessionService,
         tasks::{
             dto::{
@@ -50,6 +51,7 @@ pub struct TaskService {
     config: Arc<ServerConfig>,
     audit: Arc<AuditService>,
     providers: Arc<ProviderService>,
+    secrets: Arc<SecretService>,
     events: Arc<AppEventBus>,
 }
 
@@ -148,6 +150,10 @@ impl TaskService {
         }
 
         let inference = self.providers.resolve_active_endpoint().await?;
+        let proxy_credentials = self
+            .secrets
+            .resolve_proxy_credentials(&actor.user_id, Some(&created.session_id))
+            .await?;
         let nats_req = TaskRequest {
             task_id: created.id.clone(),
             session_id: created.session_id.clone(),
@@ -159,6 +165,7 @@ impl TaskService {
             sandbox: dto.sandbox.clone(),
             exec: dto.exec.clone().unwrap_or_default(),
             inference,
+            proxy_credentials,
         };
         self.bus.0.publish_task_request(&nats_req).await?;
 

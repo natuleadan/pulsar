@@ -42,8 +42,9 @@ pub use schema::{ProtocolSchemaBundle, SandboxMatrixEntry, export_protocol_schem
 pub use stream::{EventEnvelope, StreamPayload, TaskStreamEvent, ToolPhase};
 pub use swarm::{AgentHandoff, PermissionError, PermissionMask, SwarmMessage, SwarmTopic};
 pub use task::{
-    FencingToken, FollowUpMessage, InferenceEndpointSpec, InteractionMode, SteeringMessage,
-    StopReason, TaskLease, TaskRequest, TaskResult, TaskState, TurnDecision, WorkerStatus,
+    FencingToken, FollowUpMessage, InferenceEndpointSpec, InteractionMode, ProxyCredentialSpec,
+    SteeringMessage, StopReason, TaskLease, TaskRequest, TaskResult, TaskState, TurnDecision,
+    WorkerStatus,
 };
 pub use version::{API_GENERATION, Capability, CodecId, HandshakeRequest, HandshakeResponse};
 pub use workflow::{AutocronSchedule, TriggerKind, WorkflowDag, WorkflowEdge, WorkflowNode};

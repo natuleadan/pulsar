@@ -18,6 +18,7 @@ pub use services::TaskService;
         crate::app::InfraModule,
         crate::modules::audit::AuditModule,
         crate::modules::providers::ProvidersModule,
+        crate::modules::secrets::SecretsModule,
         crate::modules::sessions::SessionsModule,
     ],
     providers = [TaskService],
