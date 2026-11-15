@@ -1,6 +1,7 @@
 //! Boxer daemon orchestrating NATS JetStream queue consumption, fenced leases,
 //! sandbox execution, telemetry emission, artifacts, and ephemeral previews.
 
+pub mod agent_bridge;
 pub mod bus;
 
 use std::{
@@ -12,8 +13,8 @@ use std::{
 };
 
 use agents_protocol::{
-    BoxerNodeAnnouncement, CodecId, EventEnvelope, FencingToken, NodeStatus, PreviewRouteSync,
-    StopReason, StreamPayload, TaskRequest, TaskResult, TaskState, TaskStreamEvent, WorkerStatus,
+    CodecId, EventEnvelope, FencingToken, SteeringMessage, StopReason, StreamPayload, TaskRequest,
+    TaskResult, TaskState, TaskStreamEvent, WorkerStatus,
 };
 use futures_util::StreamExt;
 use serde::Deserialize;
@@ -26,7 +27,7 @@ use crate::{
     error::BoxerError,
     leases::{LeaseClient, LeaseSupervisor},
     preview::TraefikFileProvider,
-    proxy::OutboundCredentialProxy,
+    proxy::{EgressIdentityPolicy, OutboundCredentialProxy},
     sandbox::{SandboxExecRequest, build_sandbox_driver},
 };
 
@@ -104,8 +105,17 @@ impl BoxerDaemon {
             .await
             .map_err(|err| BoxerError::Bus(format!("cancel subscribe failed: {err}")))?;
 
+        let mut steer_sub = nats_bus
+            .nats_client()
+            .subscribe("boxer.tasks.steer.>")
+            .await
+            .map_err(|err| BoxerError::Bus(format!("steer subscribe failed: {err}")))?;
+
         let active_cancellers: Arc<Mutex<std::collections::HashMap<String, watch::Sender<bool>>>> =
             Arc::new(Mutex::new(std::collections::HashMap::new()));
+        let active_steers: Arc<
+            Mutex<std::collections::HashMap<String, mpsc::Sender<SteeringMessage>>>,
+        > = Arc::new(Mutex::new(std::collections::HashMap::new()));
 
         self.emit_worker_status(
             "control-plane",
@@ -130,19 +140,34 @@ impl BoxerDaemon {
                         }
                     }
                 }
+                Some(steer_msg) = steer_sub.next() => {
+                    if let Ok(msg) = serde_json::from_slice::<SteeringMessage>(&steer_msg.payload) {
+                        let tx = active_steers.lock().await.get(&msg.task_id).cloned();
+                        if let Some(tx) = tx {
+                            let _ = tx.send(msg).await;
+                        }
+                    }
+                }
                 Some(msg) = sub.next() => {
                     match serde_json::from_slice::<TaskRequest>(&msg.payload) {
                         Ok(req) => {
                             let daemon = Arc::clone(&self);
                             let cancellers = Arc::clone(&active_cancellers);
+                            let steers = Arc::clone(&active_steers);
                             tokio::spawn(async move {
                                 let (ext_tx, ext_rx) = watch::channel(false);
+                                let (steer_tx, steer_rx) = mpsc::channel(16);
                                 cancellers.lock().await.insert(req.task_id.clone(), ext_tx);
+                                steers.lock().await.insert(req.task_id.clone(), steer_tx);
                                 let tid = req.task_id.clone();
-                                if let Err(err) = daemon.execute_task(req, Some(ext_rx)).await {
+                                if let Err(err) = daemon
+                                    .execute_task_with_steering(req, Some(ext_rx), Some(steer_rx))
+                                    .await
+                                {
                                     error!(task_id = %tid, error = %err, "task execution failed");
                                 }
                                 cancellers.lock().await.remove(&tid);
+                                steers.lock().await.remove(&tid);
                             });
                         }
                         Err(err) => {
@@ -165,6 +190,17 @@ impl BoxerDaemon {
         &self,
         req: TaskRequest,
         external_cancel: Option<watch::Receiver<bool>>,
+    ) -> Result<TaskResult, BoxerError> {
+        self.execute_task_with_steering(req, external_cancel, None)
+            .await
+    }
+
+    /// Executes a fenced sandbox task with optional live steering channel.
+    pub async fn execute_task_with_steering(
+        &self,
+        req: TaskRequest,
+        external_cancel: Option<watch::Receiver<bool>>,
+        steering_rx: Option<mpsc::Receiver<SteeringMessage>>,
     ) -> Result<TaskResult, BoxerError> {
         let _permit = self
             .semaphore
@@ -208,11 +244,12 @@ impl BoxerDaemon {
 
         let _proxy = if req.exec.network_egress {
             Some(
-                OutboundCredentialProxy::start(
+                OutboundCredentialProxy::start_with_identity(
                     self.config.proxy_bind_addr,
                     true,
                     self.config.proxy_allowed_hosts.clone(),
-                    Vec::new(),
+                    agent_bridge::build_proxy_credentials(&self.config),
+                    EgressIdentityPolicy::from_env(),
                 )
                 .await?,
             )
@@ -271,20 +308,41 @@ impl BoxerDaemon {
             exec_opts.timeout_seconds = req.timeout_seconds;
         }
 
-        let exec_out = driver
-            .execute(
-                SandboxExecRequest {
-                    task_id: req.task_id.clone(),
-                    session_id: req.session_id.clone(),
-                    command: req.prompt.clone(),
-                    profile,
-                    exec: exec_opts,
-                    proxy_url,
-                },
-                Some(stream_tx),
-                combined_cancel_rx,
-            )
-            .await;
+        let exec_out = match agent_bridge::try_run_agent_engine(agent_bridge::AgentEngineContext {
+            req: &req,
+            profile: &profile,
+            exec_opts: &exec_opts,
+            proxy_url: proxy_url.clone(),
+            driver: Arc::clone(&driver),
+            bus: Arc::clone(&self.bus),
+            stream_tx: stream_tx.clone(),
+            steering_rx,
+            cancel_rx: combined_cancel_rx.clone(),
+            working_dir: self.config.workspace_root.join(&req.task_id),
+        })
+        .await
+        {
+            Some(res) => {
+                drop(stream_tx);
+                res
+            }
+            None => {
+                driver
+                    .execute(
+                        SandboxExecRequest {
+                            task_id: req.task_id.clone(),
+                            session_id: req.session_id.clone(),
+                            command: req.prompt.clone(),
+                            profile,
+                            exec: exec_opts,
+                            proxy_url,
+                        },
+                        Some(stream_tx),
+                        combined_cancel_rx,
+                    )
+                    .await
+            }
+        };
 
         cancel_forwarder.abort();
         let _ = stream_forwarder.await;
@@ -395,65 +453,5 @@ impl BoxerDaemon {
             )
             .await;
         Ok(())
-    }
-
-    async fn emit_worker_status(
-        &self,
-        session_id: &str,
-        task_id: Option<&str>,
-        status: WorkerStatus,
-        reason: Option<&str>,
-    ) {
-        let env = EventEnvelope {
-            seq: self.seq.fetch_add(1, Ordering::SeqCst),
-            emitted_at_ms: now_ms(),
-            codec: CodecId::EventsV1,
-            session_id: session_id.to_owned(),
-            task_id: task_id.map(ToOwned::to_owned),
-            payload: StreamPayload::WorkerStateChanged {
-                node_id: self.config.node_id.clone(),
-                status,
-                reason: reason.map(ToOwned::to_owned),
-            },
-        };
-        let _ = self.bus.publish_stream_event(&env).await;
-    }
-
-    /// Announces this Boxer worker onto the private VLAN discovery bus (`boxer.nodes.*`).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`BoxerError::Bus`] if the bus publication fails.
-    pub async fn announce_node(
-        &self,
-        vlan_ip: &str,
-        status: NodeStatus,
-    ) -> Result<BoxerNodeAnnouncement, BoxerError> {
-        let active_boxes = self
-            .config
-            .max_concurrent_boxes
-            .saturating_sub(self.semaphore.available_permits());
-        let announcement = BoxerNodeAnnouncement {
-            node_id: self.config.node_id.clone(),
-            vlan_ip: vlan_ip.to_owned(),
-            runtime: self.config.default_profile.runtime.clone(),
-            isolation: self.config.default_profile.isolation.clone(),
-            max_concurrent_boxes: self.config.max_concurrent_boxes,
-            active_boxes,
-            status,
-            last_heartbeat_ms: now_ms(),
-            ttl_seconds: 60,
-        };
-        self.bus.publish_node_announcement(&announcement).await?;
-        Ok(announcement)
-    }
-
-    /// Publishes or revokes a distributed preview route sync message for Traefik HTTP discovery.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`BoxerError::Bus`] if synchronization fails.
-    pub async fn sync_preview_route(&self, sync: &PreviewRouteSync) -> Result<(), BoxerError> {
-        self.bus.publish_preview_sync(sync).await
     }
 }

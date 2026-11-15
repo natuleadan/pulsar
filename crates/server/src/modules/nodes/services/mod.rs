@@ -118,7 +118,13 @@ impl NodeRegistryService {
             ));
         }
 
-        let session_token = format!("boxer-tok-{}-{}", dto.node_id, uuid::Uuid::new_v4());
+        let raw_seed = format!("{}:{}:{current_time}", dto.node_id, uuid::Uuid::new_v4());
+        let derived_phc = crate::modules::auth::services::crypto::hash_password(&raw_seed)?;
+        let session_token = format!(
+            "boxer-argon2id-{}-{}",
+            dto.node_id,
+            crate::modules::auth::services::sha256_hex(&derived_phc)
+        );
         let expires_at = current_time + 3_600_000;
 
         let node = BoxerNodeAnnouncement {

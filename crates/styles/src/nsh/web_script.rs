@@ -4,7 +4,7 @@ pub fn app_js() -> &'static str {
     r#"(function () {
   "use strict";
   const el = (id) => document.getElementById(id);
-  const state = { token: "", sessionId: "", mode: "server", latency: [16, 21, 14, 19, 13] };
+  const state = { token: "", sessionId: "", taskId: "", mode: "server", latency: [16, 21, 14, 19, 13], streamAbort: null };
 
   function apiBase() {
     const val = (el("login-url-input").value || "").trim().replace(/\/+$/, "");
@@ -182,6 +182,85 @@ pub fn app_js() -> &'static str {
 
   el("refresh-nodes-btn").addEventListener("click", () => { void refreshNodes(); });
 
+  async function startSessionStream(sessionId) {
+    if (!state.token || !sessionId) return;
+    if (state.streamAbort) state.streamAbort.abort();
+    const ctrl = new AbortController();
+    state.streamAbort = ctrl;
+    const out = el("stream-output");
+    try {
+      const resp = await fetch(`${apiBase()}/api/v1/sessions/${encodeURIComponent(sessionId)}/events/stream`, {
+        headers: { Authorization: `Bearer ${state.token}` },
+        signal: ctrl.signal,
+      });
+      if (!resp.ok || !resp.body) return;
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split("\n\n");
+        buf = parts.pop() || "";
+        for (const frame of parts) {
+          for (const line of frame.split("\n")) {
+            if (line.startsWith("data:")) {
+              out.textContent += `\n${line.slice(5).trim()}`;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  async function sendTaskControl(kind) {
+    if (!state.token || !state.taskId) {
+      el("stream-output").textContent = "Submit a task first before sending controls.";
+      return;
+    }
+    const endpoint = kind === "cancel" ? "cancel" : kind === "steer" ? "steer" : "state";
+    const body = kind === "cancel" ? { reason: "web_ui_cancel" }
+      : kind === "steer" ? { content: (el("composer-input").value || "").trim() || "/continue" }
+      : { state: kind === "pause" ? "paused" : "running" };
+    const resp = await fetch(`${apiBase()}/api/v1/tasks/${encodeURIComponent(state.taskId)}/${endpoint}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${state.token}`,
+        "Idempotency-Key": `ui-${kind}-${Date.now()}`,
+      },
+      body: JSON.stringify(body),
+    });
+    el("stream-output").textContent += `\n[${kind}] HTTP ${resp.status}`;
+  }
+
+  async function queryOps(path) {
+    const opsOut = el("ops-output");
+    if (!opsOut) return;
+    if (!state.token && !path.startsWith("/.well-known/")) {
+      opsOut.textContent = "Sign in first to query server operations.";
+      return;
+    }
+    const headers = state.token ? { Authorization: `Bearer ${state.token}` } : {};
+    const resp = await fetch(`${apiBase()}${path}`, { headers });
+    const text = await resp.text();
+    opsOut.textContent = `GET ${path} (${resp.status})\n${text}`;
+  }
+
+  if (el("task-pause-btn")) el("task-pause-btn").addEventListener("click", () => { void sendTaskControl("pause"); });
+  if (el("task-resume-btn")) el("task-resume-btn").addEventListener("click", () => { void sendTaskControl("resume"); });
+  if (el("task-cancel-btn")) el("task-cancel-btn").addEventListener("click", () => { void sendTaskControl("cancel"); });
+  if (el("task-steer-btn")) el("task-steer-btn").addEventListener("click", () => { void sendTaskControl("steer"); });
+  if (el("ops-workflows-btn")) el("ops-workflows-btn").addEventListener("click", () => { void queryOps("/api/v1/workflows"); });
+  if (el("ops-autocron-btn")) el("ops-autocron-btn").addEventListener("click", () => { void queryOps("/api/v1/autocron/schedules"); });
+  if (el("ops-swarm-btn")) el("ops-swarm-btn").addEventListener("click", () => {
+    const sid = state.sessionId || "default";
+    void queryOps(`/api/v1/sessions/${encodeURIComponent(sid)}/swarm/messages`);
+  });
+  if (el("ops-apikeys-btn")) el("ops-apikeys-btn").addEventListener("click", () => { void queryOps("/api/v1/auth/api-keys"); });
+  if (el("ops-a2a-btn")) el("ops-a2a-btn").addEventListener("click", () => { void queryOps("/api/v1/identity/ledger"); });
+
   el("prompt-form").addEventListener("submit", async (ev) => {
     ev.preventDefault();
     if (!state.token) return;
@@ -207,7 +286,17 @@ pub fn app_js() -> &'static str {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.token}` },
         body: JSON.stringify({ prompt, mode: "plan" }),
       });
-      out.textContent = tResp.ok ? `Queued task: ${await tResp.text()}` : `Task error HTTP ${tResp.status}`;
+      const bodyText = await tResp.text();
+      if (tResp.ok) {
+        try {
+          const parsed = JSON.parse(bodyText);
+          state.taskId = parsed.id || parsed.task_id || "";
+        } catch (_) {}
+        out.textContent = `Queued task: ${bodyText}`;
+        void startSessionStream(state.sessionId);
+      } else {
+        out.textContent = `Task error HTTP ${tResp.status}`;
+      }
     } catch (err) {
       out.textContent = `Task error: ${err && err.message ? err.message : "network"}`;
     }

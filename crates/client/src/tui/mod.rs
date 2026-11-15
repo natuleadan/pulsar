@@ -1,4 +1,6 @@
 pub mod app;
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+pub mod live;
 pub mod theme;
 pub mod widgets;
 
@@ -8,6 +10,8 @@ use agents_protocol::SetupMode;
 pub use app::render_tui;
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 pub use app::run_terminal_tui;
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+pub use live::run_live_tui;
 pub use theme::TuiTheme;
 
 /// Platform-independent key events for deterministic TUI navigation and snapshot testing.

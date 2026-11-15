@@ -5,6 +5,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use agents_protocol::{EventEnvelope, FencingToken, SteeringMessage, SwarmMessage, TaskRequest};
 use async_nats::jetstream::{self, stream};
+use futures_util::StreamExt;
 use tokio::sync::{Mutex, broadcast};
 
 use crate::infra::{error::ServerError, state::BoxFuture};
@@ -74,11 +75,26 @@ impl NatsMessageBus {
         ensure_stream(&js, STREAM_BOXER_STREAM, vec!["boxer.stream.>".into()]).await?;
         ensure_stream(&js, STREAM_SWARM_EVENTS, vec!["swarm.>".into()]).await?;
 
-        Ok(Arc::new(Self {
-            client,
+        let bus = Arc::new(Self {
+            client: client.clone(),
             jetstream: js,
             channels: Arc::new(Mutex::new(HashMap::new())),
-        }))
+        });
+
+        let mut stream_sub = client
+            .subscribe("boxer.stream.>")
+            .await
+            .map_err(|e| ServerError::Internal(format!("nats stream subscribe failed: {e}")))?;
+        let fanout_bus = Arc::clone(&bus);
+        tokio::spawn(async move {
+            while let Some(msg) = stream_sub.next().await {
+                if let Ok(envelope) = serde_json::from_slice::<EventEnvelope>(&msg.payload) {
+                    fanout_bus.fanout_local(&envelope).await;
+                }
+            }
+        });
+
+        Ok(bus)
     }
 
     async fn publish_json<T: serde::Serialize>(

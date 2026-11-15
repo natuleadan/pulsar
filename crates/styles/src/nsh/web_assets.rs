@@ -82,10 +82,26 @@ pub fn index_html() -> &'static str {
               <textarea id="composer-input" data-testid="composer-input" class="textarea" rows="3" placeholder="Ask agents to build, verify, or deploy..."></textarea>
               <div class="row-actions">
                 <button id="run-prompt-btn" data-testid="run-prompt-btn" type="submit" class="btn primary">Run Task</button>
+                <button id="task-pause-btn" data-testid="task-pause-btn" type="button" class="btn outline">Pause</button>
+                <button id="task-resume-btn" data-testid="task-resume-btn" type="button" class="btn outline">Resume</button>
+                <button id="task-cancel-btn" data-testid="task-cancel-btn" type="button" class="btn destructive">Cancel</button>
+                <button id="task-steer-btn" data-testid="task-steer-btn" type="button" class="btn secondary">Steer</button>
                 <button id="refresh-nodes-btn" data-testid="refresh-nodes-btn" type="button" class="btn outline">Refresh VLAN Nodes</button>
               </div>
             </form>
             <pre id="stream-output" data-testid="stream-output" class="stream-box">Ready.</pre>
+          </div>
+
+          <div class="card" id="ops-console-card" data-testid="ops-console-card">
+            <h2 class="card-title">Server Operations (Swarm · Workflows · Autocron · Keys · A2A)</h2>
+            <div class="row-actions">
+              <button id="ops-workflows-btn" type="button" class="btn outline">Workflows</button>
+              <button id="ops-autocron-btn" type="button" class="btn outline">Autocron</button>
+              <button id="ops-swarm-btn" type="button" class="btn outline">Swarm Board</button>
+              <button id="ops-apikeys-btn" type="button" class="btn outline">API Keys</button>
+              <button id="ops-a2a-btn" type="button" class="btn outline">A2A &amp; Ledger</button>
+            </div>
+            <pre id="ops-output" data-testid="ops-output" class="stream-box">Select an operation to query agents-server.</pre>
           </div>
 
           <div class="card">

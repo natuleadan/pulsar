@@ -21,6 +21,7 @@ sha2 = "0.10"
 thiserror = "2.0"
 tokio = { version = "1.43", features = ["sync", "macros"] }
 tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
 crossterm = "0.29"

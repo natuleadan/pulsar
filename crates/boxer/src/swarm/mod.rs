@@ -24,6 +24,12 @@ pub fn swarm_nats_subject(session_id: &str, topic: &SwarmTopic) -> String {
     }
 }
 
+/// Computes canonical P2P NATS subject (`swarm.<session>.p2p.<agent_id>`) for inter-container peering.
+#[must_use]
+pub fn swarm_p2p_subject(session_id: &str, agent_id: &str) -> String {
+    format!("swarm.{session_id}.p2p.{agent_id}")
+}
+
 /// Computes HMAC-SHA256 hex signature covering canonical swarm message envelope fields
 /// to enforce OWASP ASI-05 message integrity across NATS.
 #[must_use]

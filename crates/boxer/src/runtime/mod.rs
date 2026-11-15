@@ -10,7 +10,7 @@ pub mod session_tree;
 
 pub use durable::{
     DurableReplayTracker, DurableStepKind, DurableStepLogger, DurableStepRecord,
-    InMemoryDurableLogger,
+    InMemoryDurableLogger, JsonlFileDurableLogger,
 };
 pub use engine::{
     NativeAgentRuntime, NativeRuntimeConfig, NativeTurnOutcome, RetryAuditEntry, RuntimeTool,

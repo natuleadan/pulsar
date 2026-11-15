@@ -75,6 +75,89 @@ pub struct InMemoryDurableLogger {
     steps: Arc<Mutex<HashMap<String, Vec<DurableStepRecord>>>>,
 }
 
+/// File-backed JSONL implementation of [`DurableStepLogger`] surviving process restarts.
+#[derive(Clone)]
+pub struct JsonlFileDurableLogger {
+    root_dir: std::path::PathBuf,
+    write_lock: Arc<Mutex<()>>,
+}
+
+impl JsonlFileDurableLogger {
+    #[must_use]
+    pub fn new(root_dir: impl Into<std::path::PathBuf>) -> Self {
+        Self {
+            root_dir: root_dir.into(),
+            write_lock: Arc::new(Mutex::new(())),
+        }
+    }
+
+    fn path_for_task(&self, task_id: &str) -> std::path::PathBuf {
+        let safe_id: String = task_id
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || matches!(c, '-' | '_') {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        self.root_dir.join(format!("{safe_id}.durable.jsonl"))
+    }
+}
+
+impl DurableStepLogger for JsonlFileDurableLogger {
+    fn append_step<'a>(
+        &'a self,
+        record: DurableStepRecord,
+    ) -> BoxFuture<'a, Result<(), BoxerError>> {
+        Box::pin(async move {
+            use std::io::Write;
+            let _guard = self.write_lock.lock().await;
+            tokio::fs::create_dir_all(&self.root_dir)
+                .await
+                .map_err(|e| BoxerError::ExecutionFailed(format!("durable dir failed: {e}")))?;
+            let path = self.path_for_task(&record.task_id);
+            let line = serde_json::to_string(&record).map_err(|e| {
+                BoxerError::ExecutionFailed(format!("durable serialize failed: {e}"))
+            })?;
+            let mut file = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&path)
+                .map_err(|e| BoxerError::ExecutionFailed(format!("durable open failed: {e}")))?;
+            writeln!(file, "{line}")
+                .map_err(|e| BoxerError::ExecutionFailed(format!("durable write failed: {e}")))?;
+            Ok(())
+        })
+    }
+
+    fn list_steps<'a>(
+        &'a self,
+        task_id: &'a str,
+    ) -> BoxFuture<'a, Result<Vec<DurableStepRecord>, BoxerError>> {
+        Box::pin(async move {
+            let path = self.path_for_task(task_id);
+            if !path.exists() {
+                return Ok(Vec::new());
+            }
+            let raw = tokio::fs::read_to_string(&path)
+                .await
+                .map_err(|e| BoxerError::ExecutionFailed(format!("durable read failed: {e}")))?;
+            let mut out = Vec::new();
+            for line in raw.lines() {
+                if line.trim().is_empty() {
+                    continue;
+                }
+                if let Ok(rec) = serde_json::from_str::<DurableStepRecord>(line) {
+                    out.push(rec);
+                }
+            }
+            Ok(out)
+        })
+    }
+}
+
 impl InMemoryDurableLogger {
     #[must_use]
     pub fn new() -> Self {

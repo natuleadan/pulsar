@@ -60,7 +60,18 @@ pub fn start_autodiscovery_heartbeat(
             let seq = HEARTBEAT_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
             let health = svc.health().await;
             let register_url = format!("{}/api/v1/nodes/register", cfg.server_internal_url);
-            let node_ip = "127.0.0.1";
+            let node_ip = std::env::var("AGENTS_NODE_IP")
+                .ok()
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| {
+                    let ip = cfg.proxy_bind_addr.ip();
+                    if ip.is_unspecified() {
+                        "127.0.0.1".to_owned()
+                    } else {
+                        ip.to_string()
+                    }
+                });
             let timestamp_ms = now_ms();
             let sign_payload =
                 format!("{}:{node_ip}:{}:{timestamp_ms}", cfg.node_id, cfg.http_port);

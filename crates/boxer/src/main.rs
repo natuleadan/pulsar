@@ -35,12 +35,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let ts_layer = TimeSeriesConfig::default()
         .with_storage(Arc::new(FileLogStorage::new(&boxer_log_dir)))
         .layer();
-    let ts_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    let fmt_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
+    let ts_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("info,hyper=warn,hyper_util=warn,reqwest=warn,h2=warn,async_nats=warn")
+    });
+    let fmt_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("info,hyper=warn,hyper_util=warn,reqwest=warn,h2=warn,async_nats=warn")
+    });
     let _ = tracing_subscriber::registry()
         .with(ts_layer.with_filter(ts_filter))
         .with(tracing_subscriber::fmt::layer().with_filter(fmt_filter))
         .try_init();
+
+    if let Some(otel) = std::env::var("AGENTS_OTEL_ENDPOINT")
+        .ok()
+        .or_else(|| std::env::var("OTLP_ENDPOINT").ok())
+        .filter(|s| !s.trim().is_empty())
+    {
+        info!(otlp_endpoint = %otel, "agents-boxer OTLP exporter endpoint configured alongside JSONL TimeSeriesLayer");
+    }
 
     let cli = BoxerCli::parse();
     let cfg = Arc::new(BoxerConfig::from_cli(cli)?);

@@ -10,7 +10,7 @@ use std::{
 use ironic::{
     OpenApiSchema,
     logging::{FileLogStorage, TimeSeriesConfig},
-    telemetry::{TelemetryConfig, TracingGuard, init_tracing},
+    telemetry::TracingGuard,
 };
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
@@ -114,33 +114,36 @@ fn ensure_writable(dir: &Path) -> bool {
     }
 }
 
+fn build_env_filter(base_level: &str) -> EnvFilter {
+    EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new(format!(
+            "{base_level},sqlx=warn,hyper=warn,hyper_util=warn,reqwest=warn,h2=warn,async_nats=warn,rustls=warn"
+        ))
+    })
+}
+
 /// Initializes structured logging (`fmt` + Ironic `TimeSeriesLayer` -> `YYYY-MM-DD.jsonl`)
 /// and optional OTLP distributed tracing when `AGENTS_OTEL_ENDPOINT` / `OTLP_ENDPOINT` is set.
 #[must_use]
 pub fn init_structured_logging(logging: &LoggingConfig, apm: &ApmConfig) -> Option<TracingGuard> {
-    if let Some(endpoint) = &apm.otlp_endpoint {
-        let guard = init_tracing(TelemetryConfig {
-            service_name: apm.service_name.clone(),
-            otlp_endpoint: Some(endpoint.clone()),
-            batch_interval: apm.batch_interval(),
-            sample_rate: apm.sample_rate,
-            propagate_context: apm.propagate_context,
-        });
-        return Some(guard);
-    }
-
     let writable_dir = logging.resolve_writable_dir();
     let storage = Arc::new(FileLogStorage::new(&writable_dir));
     let ts_layer = TimeSeriesConfig::default().with_storage(storage).layer();
-    let ts_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&logging.level));
-    let fmt_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&logging.level));
+    let ts_filter = build_env_filter(&logging.level);
+    let fmt_filter = build_env_filter(&logging.level);
 
     let _ = tracing_subscriber::registry()
         .with(ts_layer.with_filter(ts_filter))
         .with(tracing_subscriber::fmt::layer().with_filter(fmt_filter))
         .try_init();
+
+    if let Some(endpoint) = &apm.otlp_endpoint {
+        tracing::info!(
+            service = %apm.service_name,
+            otlp_endpoint = %endpoint,
+            "JSONL TimeSeriesLayer active alongside OTLP configuration"
+        );
+    }
 
     None
 }

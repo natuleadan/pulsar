@@ -43,22 +43,46 @@ impl WebhookIngressController {
         #[param] slug: String,
         #[body] dto: Option<WebhookPayloadDto>,
     ) -> Result<Json<WorkflowRunEntity>, HttpError> {
-        self.identity
-            .record_inbound(
-                "webhook",
-                &format!("/webhooks/{slug}"),
-                "POST",
-                &inbound.headers,
-                None,
-                serde_json::json!({ "slug": slug }),
-            )
-            .await?;
-
         let input = dto
             .and_then(|d| d.payload)
             .unwrap_or_else(|| serde_json::json!({}));
-        let run = self.service.trigger_by_webhook_slug(&slug, input).await?;
-        Ok(Json(run))
+        match self.service.trigger_by_webhook_slug(&slug, input).await {
+            Ok(run) => {
+                self.identity
+                    .record_inbound_with_status(
+                        "webhook",
+                        &format!("/webhooks/{slug}"),
+                        "POST",
+                        &inbound.headers,
+                        Some(&run.run_id),
+                        200,
+                        serde_json::json!({ "slug": slug, "outcome": "triggered" }),
+                    )
+                    .await?;
+                Ok(Json(run))
+            }
+            Err(err) => {
+                let err_status = match &err {
+                    crate::infra::error::ServerError::NotFound(_) => 404,
+                    crate::infra::error::ServerError::Unauthorized(_) => 401,
+                    crate::infra::error::ServerError::Forbidden(_) => 403,
+                    crate::infra::error::ServerError::Validation(_) => 422,
+                    _ => 500,
+                };
+                self.identity
+                    .record_inbound_with_status(
+                        "webhook",
+                        &format!("/webhooks/{slug}"),
+                        "POST",
+                        &inbound.headers,
+                        None,
+                        err_status,
+                        serde_json::json!({ "slug": slug, "outcome": "error" }),
+                    )
+                    .await?;
+                Err(err.into())
+            }
+        }
     }
 }
 

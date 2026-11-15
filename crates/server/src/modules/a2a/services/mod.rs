@@ -1,5 +1,7 @@
 //! A2A protocol service built natively on `a2a-lf` types, `IdentityService`, and orchestrator eventing.
 
+pub mod worker_dispatch;
+
 use std::{collections::HashMap, sync::Arc};
 
 use a2a::{
@@ -14,20 +16,17 @@ use axum::http::HeaderMap;
 use chrono::Utc;
 use garde::Validate;
 use ironic::{Injectable, OpenApiSchema};
-use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tracing::info;
 
 use crate::{
-    infra::{
-        error::ServerError,
-        events::{A2aInboundTaskEvent, AppEventBus},
-    },
-    modules::identity::services::{IdentityService, OutboundInteractionRecord},
+    infra::events::{A2aInboundTaskEvent, AppEventBus},
+    modules::identity::services::IdentityService,
 };
 
 use super::repositories::A2aTaskStore;
+use worker_dispatch::{extract_task_id, invalid_params, spawn_inbound_dispatcher};
 
 const JSONRPC_INVALID_PARAMS: i32 = -32602;
 const JSONRPC_METHOD_NOT_FOUND: i32 = -32601;
@@ -298,7 +297,7 @@ impl A2aService {
             id: task_id.clone(),
             context_id,
             status: TaskStatus {
-                state: TaskState::Completed,
+                state: TaskState::Working,
                 message: Some(reply_msg),
                 timestamp: Some(Utc::now()),
             },
@@ -326,16 +325,22 @@ impl A2aService {
             .await
         {
             Ok(saved) => {
-                let _ = self
-                    .events
-                    .publish(A2aInboundTaskEvent {
-                        task_id: saved.id.clone(),
-                        context_id: saved.context_id.clone(),
-                        caller_org: caller_org.clone(),
-                        caller_installation_id: caller_installation_id.clone(),
-                        received_at: u64::try_from(Utc::now().timestamp()).unwrap_or(0),
-                    })
-                    .await;
+                let evt = A2aInboundTaskEvent {
+                    task_id: saved.id.clone(),
+                    context_id: saved.context_id.clone(),
+                    caller_org: caller_org.clone(),
+                    caller_installation_id: caller_installation_id.clone(),
+                    received_at: u64::try_from(Utc::now().timestamp()).unwrap_or(0),
+                };
+                if self.events.publish(evt.clone()).await == 0 {
+                    spawn_inbound_dispatcher(
+                        Arc::clone(&self.events),
+                        Arc::clone(&self.store),
+                        None,
+                    );
+                    tokio::task::yield_now().await;
+                    let _ = self.events.publish(evt).await;
+                }
                 info!(
                     task_id = %saved.id,
                     context_id = %saved.context_id,
@@ -426,91 +431,4 @@ impl A2aService {
             ),
         }
     }
-
-    /// Sends an outbound A2A JSON-RPC `message/send` call with mandatory installation identity headers.
-    pub async fn send_outbound(
-        &self,
-        dto: &OutboundA2aSendDto,
-    ) -> Result<OutboundA2aResponse, ServerError> {
-        let parsed = Url::parse(&dto.target_url)
-            .map_err(|e| ServerError::Validation(format!("invalid A2A targetUrl: {e}")))?;
-        if !matches!(parsed.scheme(), "http" | "https") {
-            return Err(ServerError::Validation(
-                "A2A targetUrl must use http or https".into(),
-            ));
-        }
-
-        let mut headers = HeaderMap::new();
-        let active_identity = self.identity.inject_outbound_headers(&mut headers).await?;
-
-        let mut msg = Message::new(Role::User, vec![Part::text(dto.text.clone())]);
-        msg.context_id = dto.context_id.clone();
-
-        let rpc_req = JsonRpcRequest::new(
-            JsonRpcId::String(uuid::Uuid::new_v4().to_string()),
-            "message/send",
-            Some(json!({ "message": msg })),
-        );
-
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(15))
-            .build()
-            .map_err(|e| ServerError::Internal(format!("a2a client build failed: {e}")))?;
-
-        let resp = client
-            .post(parsed.as_str())
-            .headers(headers)
-            .json(&rpc_req)
-            .send()
-            .await
-            .map_err(|e| ServerError::Validation(format!("outbound A2A request failed: {e}")))?;
-
-        let status = resp.status().as_u16();
-        let body: Value = resp
-            .json()
-            .await
-            .unwrap_or_else(|_| json!({ "rawStatus": status }));
-
-        let _ = self
-            .identity
-            .record_outbound(OutboundInteractionRecord {
-                protocol: "a2a",
-                target_host: parsed.host_str(),
-                endpoint_path: parsed.path(),
-                method: "POST",
-                status_code: Some(i32::from(status)),
-                task_id: None,
-                identity: Some(&active_identity),
-            })
-            .await;
-
-        Ok(OutboundA2aResponse {
-            target_url: dto.target_url.clone(),
-            status_code: status,
-            injected_org: active_identity.organization_name,
-            injected_installation_id: active_identity.installation_id,
-            response: body,
-        })
-    }
-}
-
-fn extract_task_id(params: Option<&Value>) -> Option<String> {
-    params?
-        .get("id")
-        .or_else(|| params?.get("taskId"))
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_owned)
-}
-
-fn invalid_params(id: JsonRpcId, msg: &str) -> JsonRpcResponse {
-    JsonRpcResponse::error(
-        id,
-        JsonRpcError {
-            code: JSONRPC_INVALID_PARAMS,
-            message: msg.to_owned(),
-            data: None,
-        },
-    )
 }

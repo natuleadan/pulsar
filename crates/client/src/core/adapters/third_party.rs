@@ -74,14 +74,79 @@ impl ThirdPartyAdapter {
         }
     }
 
-    fn auth_headers(token: &str, idempotency_key: Option<&str>) -> BTreeMap<String, String> {
+    fn auth_headers(&self, token: &str, idempotency_key: Option<&str>) -> BTreeMap<String, String> {
         let mut h = BTreeMap::new();
         h.insert("content-type".to_owned(), "application/json".to_owned());
-        h.insert("authorization".to_owned(), format!("Bearer {token}"));
+        match self.provider {
+            ThirdPartyProvider::UpstashBox => {
+                h.insert("authorization".to_owned(), format!("Bearer {token}"));
+                h.insert("x-upstash-box".to_owned(), "1".to_owned());
+            }
+            ThirdPartyProvider::Daytona => {
+                h.insert("authorization".to_owned(), format!("Bearer {token}"));
+                h.insert("x-daytona-source".to_owned(), "agents-client".to_owned());
+            }
+            ThirdPartyProvider::DeepInfra => {
+                h.insert("authorization".to_owned(), format!("Bearer {token}"));
+            }
+            ThirdPartyProvider::Instabox | ThirdPartyProvider::Unknown(_) => {
+                h.insert("authorization".to_owned(), format!("Bearer {token}"));
+            }
+        }
         if let Some(key) = idempotency_key {
             h.insert("idempotency-key".to_owned(), key.to_owned());
         }
         h
+    }
+
+    fn session_create_url(&self) -> String {
+        match self.provider {
+            ThirdPartyProvider::UpstashBox => format!("{}/v1/boxes", self.endpoint),
+            ThirdPartyProvider::Daytona => format!("{}/api/sandbox", self.endpoint),
+            ThirdPartyProvider::DeepInfra => format!("{}/v1/deployments", self.endpoint),
+            ThirdPartyProvider::Instabox | ThirdPartyProvider::Unknown(_) => {
+                format!("{}/boxes", self.endpoint)
+            }
+        }
+    }
+
+    fn task_submit_url(&self, session_id: &str) -> String {
+        match self.provider {
+            ThirdPartyProvider::UpstashBox => {
+                format!("{}/v1/boxes/{session_id}/runs", self.endpoint)
+            }
+            ThirdPartyProvider::Daytona => {
+                format!("{}/api/sandbox/{session_id}/execute", self.endpoint)
+            }
+            ThirdPartyProvider::DeepInfra => {
+                format!("{}/v1/inference/{session_id}", self.endpoint)
+            }
+            ThirdPartyProvider::Instabox | ThirdPartyProvider::Unknown(_) => {
+                format!("{}/boxes/{session_id}/exec", self.endpoint)
+            }
+        }
+    }
+
+    fn task_stop_url(&self, task_id: &str) -> String {
+        match self.provider {
+            ThirdPartyProvider::UpstashBox => format!("{}/v1/runs/{task_id}/cancel", self.endpoint),
+            ThirdPartyProvider::Daytona => format!("{}/api/sandbox/{task_id}/stop", self.endpoint),
+            ThirdPartyProvider::DeepInfra => {
+                format!("{}/v1/inference/{task_id}/cancel", self.endpoint)
+            }
+            ThirdPartyProvider::Instabox | ThirdPartyProvider::Unknown(_) => {
+                format!("{}/executions/{task_id}/stop", self.endpoint)
+            }
+        }
+    }
+
+    fn task_steer_url(&self, task_id: &str) -> String {
+        match self.provider {
+            ThirdPartyProvider::Daytona => {
+                format!("{}/api/sandbox/{task_id}/steer", self.endpoint)
+            }
+            _ => format!("{}/executions/{task_id}/steer", self.endpoint),
+        }
     }
 }
 
@@ -136,8 +201,8 @@ impl SandboxProvider for ThirdPartyAdapter {
         Box::pin(async move {
             let req = HttpRequest {
                 method: HttpMethod::Post,
-                url: format!("{}/boxes", self.endpoint),
-                headers: Self::auth_headers(token, None),
+                url: self.session_create_url(),
+                headers: self.auth_headers(token, None),
                 body: Some(json!({ "name": title }).to_string()),
             };
             let resp = self.transport.execute(req).await?;
@@ -170,8 +235,8 @@ impl SandboxProvider for ThirdPartyAdapter {
         Box::pin(async move {
             let req = HttpRequest {
                 method: HttpMethod::Post,
-                url: format!("{}/boxes/{session_id}/exec", self.endpoint),
-                headers: Self::auth_headers(token, None),
+                url: self.task_submit_url(session_id),
+                headers: self.auth_headers(token, None),
                 body: Some(json!({ "prompt": prompt }).to_string()),
             };
             let resp = self.transport.execute(req).await?;
@@ -211,8 +276,8 @@ impl SandboxProvider for ThirdPartyAdapter {
             }
             let req = HttpRequest {
                 method: HttpMethod::Post,
-                url: format!("{}/executions/{task_id}/stop", self.endpoint),
-                headers: Self::auth_headers(token, Some(idempotency_key)),
+                url: self.task_stop_url(task_id),
+                headers: self.auth_headers(token, Some(idempotency_key)),
                 body: None,
             };
             let resp = self.transport.execute(req).await?;
@@ -245,8 +310,8 @@ impl SandboxProvider for ThirdPartyAdapter {
             }
             let req = HttpRequest {
                 method: HttpMethod::Post,
-                url: format!("{}/executions/{task_id}/steer", self.endpoint),
-                headers: Self::auth_headers(token, None),
+                url: self.task_steer_url(task_id),
+                headers: self.auth_headers(token, None),
                 body: Some(json!({ "content": content }).to_string()),
             };
             let resp = self.transport.execute(req).await?;

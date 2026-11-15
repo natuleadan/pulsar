@@ -1,3 +1,5 @@
+pub mod server_api;
+pub mod server_ops;
 pub mod third_party;
 
 use std::collections::{BTreeMap, VecDeque};
@@ -280,13 +282,16 @@ impl SandboxProvider for ServerModeProvider {
         Box::pin(async move {
             let path = match action {
                 ControlAction::Stop => format!("{}/api/v1/tasks/{task_id}/cancel", self.base_url),
-                ControlAction::Pause | ControlAction::Resume | ControlAction::Retry => {
-                    format!("{}/api/v1/tasks/{task_id}/steer", self.base_url)
+                ControlAction::Pause | ControlAction::Resume => {
+                    format!("{}/api/v1/tasks/{task_id}/state", self.base_url)
                 }
+                ControlAction::Retry => format!("{}/api/v1/tasks/{task_id}/steer", self.base_url),
             };
             let body_json = match action {
                 ControlAction::Stop => json!({ "reason": "client_requested_stop" }),
-                _ => json!({ "content": format!("/{}", action.as_str()) }),
+                ControlAction::Pause => json!({ "state": "paused" }),
+                ControlAction::Resume => json!({ "state": "running" }),
+                ControlAction::Retry => json!({ "content": "/retry" }),
             };
             let req = HttpRequest {
                 method: HttpMethod::Post,

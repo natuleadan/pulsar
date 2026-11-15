@@ -117,6 +117,8 @@ impl Middleware for TraceContextMiddleware {
         next: MiddlewareNext<'a>,
     ) -> PipelineFuture<'a> {
         let trace = W3cTraceContext::from_headers_or_new(context.request().headers());
+        let method = context.request().method().clone();
+        let path = context.request().uri().path().to_owned();
         context.insert_extension(trace.clone());
         let started = Instant::now();
         Box::pin(async move {
@@ -128,6 +130,16 @@ impl Middleware for TraceContextMiddleware {
 
             match result {
                 Ok(mut response) => {
+                    let status = response.status().as_u16();
+                    ::tracing::info!(
+                        target: "agents_server::http::access",
+                        method = %method,
+                        path = %path,
+                        status,
+                        trace_id = %trace.trace_id,
+                        duration_ms = elapsed_secs * 1000.0,
+                        "http_access"
+                    );
                     if let Ok(tp) = HeaderValue::from_str(&trace.traceparent) {
                         response
                             .headers_mut()
@@ -140,7 +152,20 @@ impl Middleware for TraceContextMiddleware {
                     }
                     Ok(response)
                 }
-                Err(err) => Err(err),
+                Err(err) => {
+                    let status = err.status().as_u16();
+                    ::tracing::warn!(
+                        target: "agents_server::http::access",
+                        method = %method,
+                        path = %path,
+                        status,
+                        trace_id = %trace.trace_id,
+                        duration_ms = elapsed_secs * 1000.0,
+                        error = %err,
+                        "http_access_error"
+                    );
+                    Err(err)
+                }
             }
         })
     }

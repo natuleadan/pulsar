@@ -18,6 +18,12 @@ pub trait BlobStorePort: Send + Sync + 'static {
     fn get_blob<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Result<Vec<u8>, ServerError>>;
 
     fn delete_blob<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Result<(), ServerError>>;
+
+    fn presign_url<'a>(
+        &'a self,
+        key: &'a str,
+        expires_secs: u64,
+    ) -> BoxFuture<'a, Result<String, ServerError>>;
 }
 
 /// Local filesystem blob store for sovereign self-hosted mode and hermetic tests.
@@ -80,6 +86,17 @@ impl BlobStorePort for LocalFsBlobStore {
                     .map_err(|e| ServerError::Internal(format!("failed to remove blob: {e}")))?;
             }
             Ok(())
+        })
+    }
+
+    fn presign_url<'a>(
+        &'a self,
+        key: &'a str,
+        _expires_secs: u64,
+    ) -> BoxFuture<'a, Result<String, ServerError>> {
+        Box::pin(async move {
+            let path = self.resolve_path(key)?;
+            Ok(format!("file://{}", path.display()))
         })
     }
 }
@@ -187,6 +204,148 @@ impl BlobStorePort for UpstashBlobStore {
                 )));
             }
             Ok(())
+        })
+    }
+
+    fn presign_url<'a>(
+        &'a self,
+        key: &'a str,
+        expires_secs: u64,
+    ) -> BoxFuture<'a, Result<String, ServerError>> {
+        Box::pin(async move {
+            let clean_key = key.trim_start_matches('/');
+            Ok(format!(
+                "{}/{}?expires={expires_secs}",
+                self.endpoint, clean_key
+            ))
+        })
+    }
+}
+
+/// S3 / RustFS compatible HTTP object store implementing [`BlobStorePort`].
+#[derive(Clone)]
+pub struct S3BlobStore {
+    endpoint: String,
+    bucket: String,
+    access_key: String,
+    secret_key: String,
+    client: reqwest::Client,
+}
+
+impl S3BlobStore {
+    #[must_use]
+    pub fn new(endpoint: String, bucket: String, access_key: String, secret_key: String) -> Self {
+        Self {
+            endpoint: endpoint.trim_end_matches('/').to_owned(),
+            bucket: bucket.trim_matches('/').to_owned(),
+            access_key,
+            secret_key,
+            client: reqwest::Client::new(),
+        }
+    }
+
+    fn object_url(&self, key: &str) -> Result<String, ServerError> {
+        let clean = key.trim_start_matches('/');
+        if clean.contains("..") || clean.contains('\\') {
+            return Err(ServerError::Validation(
+                "invalid s3 blob key traversal".into(),
+            ));
+        }
+        Ok(format!("{}/{}/{}", self.endpoint, self.bucket, clean))
+    }
+}
+
+impl BlobStorePort for S3BlobStore {
+    fn put_blob<'a>(
+        &'a self,
+        key: &'a str,
+        data: Vec<u8>,
+        content_type: &'a str,
+    ) -> BoxFuture<'a, Result<String, ServerError>> {
+        Box::pin(async move {
+            let url = self.object_url(key)?;
+            let res = self
+                .client
+                .put(&url)
+                .header(reqwest::header::CONTENT_TYPE, content_type)
+                .header("x-amz-access-key", &self.access_key)
+                .body(data)
+                .send()
+                .await
+                .map_err(|e| ServerError::Internal(format!("s3 blob put network: {e}")))?;
+            if !res.status().is_success() {
+                let status = res.status();
+                let txt = res.text().await.unwrap_or_default();
+                return Err(ServerError::Internal(format!(
+                    "s3 blob put failed {status}: {txt}"
+                )));
+            }
+            Ok(url)
+        })
+    }
+
+    fn get_blob<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Result<Vec<u8>, ServerError>> {
+        Box::pin(async move {
+            let url = self.object_url(key)?;
+            let res = self
+                .client
+                .get(&url)
+                .header("x-amz-access-key", &self.access_key)
+                .send()
+                .await
+                .map_err(|e| ServerError::Internal(format!("s3 blob get network: {e}")))?;
+            if !res.status().is_success() {
+                let status = res.status();
+                let txt = res.text().await.unwrap_or_default();
+                return Err(ServerError::NotFound(format!(
+                    "s3 blob get failed {status}: {txt}"
+                )));
+            }
+            let bytes = res
+                .bytes()
+                .await
+                .map_err(|e| ServerError::Internal(format!("s3 blob read bytes: {e}")))?;
+            Ok(bytes.to_vec())
+        })
+    }
+
+    fn delete_blob<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Result<(), ServerError>> {
+        Box::pin(async move {
+            let url = self.object_url(key)?;
+            let res = self
+                .client
+                .delete(&url)
+                .header("x-amz-access-key", &self.access_key)
+                .send()
+                .await
+                .map_err(|e| ServerError::Internal(format!("s3 blob delete network: {e}")))?;
+            if !res.status().is_success() {
+                let status = res.status();
+                let txt = res.text().await.unwrap_or_default();
+                return Err(ServerError::Internal(format!(
+                    "s3 blob delete failed {status}: {txt}"
+                )));
+            }
+            Ok(())
+        })
+    }
+
+    fn presign_url<'a>(
+        &'a self,
+        key: &'a str,
+        expires_secs: u64,
+    ) -> BoxFuture<'a, Result<String, ServerError>> {
+        Box::pin(async move {
+            let url = self.object_url(key)?;
+            let exp = crate::infra::state::now_ms() / 1000 + expires_secs;
+            let sig = crate::modules::auth::services::compute_hmac_hex(
+                self.secret_key.as_bytes(),
+                format!("{url}:{exp}").as_bytes(),
+            );
+            Ok(format!(
+                "{url}?X-Amz-Credential={}&X-Amz-Expires={expires_secs}&X-Amz-Signature={sig}",
+                self.access_key
+            ))
         })
     }
 }

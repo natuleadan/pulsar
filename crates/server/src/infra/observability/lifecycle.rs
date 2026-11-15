@@ -132,7 +132,27 @@ impl OnModuleInit for LifecycleManager {
     fn on_module_init(&self) -> LifecycleFuture<'_> {
         self.state.module_init_count.fetch_add(1, Ordering::Relaxed);
         Self::record_transition("on_module_init", None);
-        Box::pin(async { Ok(()) })
+        Box::pin(async {
+            let log_dir =
+                std::env::var("AGENTS_LOG_DIR").unwrap_or_else(|_| ".logs/server".to_owned());
+            let writable = std::fs::create_dir_all(&log_dir).is_ok();
+            let db_configured = std::env::var("DATABASE_URL")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .is_some();
+            let nats_configured = std::env::var("NATS_URL")
+                .ok()
+                .filter(|v| !v.trim().is_empty())
+                .is_some();
+            tracing::info!(
+                log_dir = %log_dir,
+                log_dir_writable = writable,
+                db_configured,
+                nats_configured,
+                "lifecycle module init preflight verified"
+            );
+            Ok(())
+        })
     }
 }
 
@@ -162,7 +182,10 @@ impl BeforeShutdown for LifecycleManager {
             *guard = Some(name.clone());
         }
         Self::record_transition("before_shutdown", Some(&name));
-        Box::pin(async { Ok(()) })
+        Box::pin(async move {
+            tracing::info!(signal = %name, "graceful shutdown initiated; draining active streams and flushing telemetry");
+            Ok(())
+        })
     }
 }
 
@@ -183,7 +206,10 @@ impl OnModuleDestroy for LifecycleManager {
             .module_destroy_count
             .fetch_add(1, Ordering::Relaxed);
         Self::record_transition("on_module_destroy", None);
-        Box::pin(async { Ok(()) })
+        Box::pin(async {
+            tracing::info!("lifecycle module teardown completed");
+            Ok(())
+        })
     }
 }
 

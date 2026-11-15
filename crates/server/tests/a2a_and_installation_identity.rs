@@ -147,10 +147,9 @@ async fn a2a_postal_gateway_processes_message_send_and_records_indefinite_ledger
         .as_str()
         .expect("task id")
         .to_owned();
-    assert_eq!(
-        rpc_json["result"]["status"]["state"],
-        "TASK_STATE_COMPLETED"
-    );
+    assert_eq!(rpc_json["result"]["status"]["state"], "TASK_STATE_WORKING");
+
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
     let get_req = Request::builder()
         .method("POST")

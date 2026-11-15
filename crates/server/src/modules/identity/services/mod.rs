@@ -141,6 +141,30 @@ impl IdentityService {
         task_id: Option<&str>,
         detail: Value,
     ) -> Result<AgentInteractionLedgerEntry, ServerError> {
+        self.record_inbound_with_status(
+            protocol,
+            endpoint_path,
+            method,
+            headers,
+            task_id,
+            200,
+            detail,
+        )
+        .await
+    }
+
+    /// Records an inbound external call with an explicit HTTP outcome status.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn record_inbound_with_status(
+        &self,
+        protocol: &str,
+        endpoint_path: &str,
+        method: &str,
+        headers: &HeaderMap,
+        task_id: Option<&str>,
+        outcome_status: u16,
+        detail: Value,
+    ) -> Result<AgentInteractionLedgerEntry, ServerError> {
         let remote_org = header_str(headers, HEADER_AGENT_ORGANIZATION);
         let remote_id = header_str(headers, HEADER_AGENT_INSTALLATION_ID);
         let code_present = header_str(headers, HEADER_AGENT_IDENTITY_CODE).is_some();
@@ -160,7 +184,7 @@ impl IdentityService {
         let status_code = if strict_inbound && verification_status == "missing" {
             401
         } else {
-            200
+            outcome_status
         };
 
         let entry = AgentInteractionLedgerEntry {
@@ -175,7 +199,7 @@ impl IdentityService {
             target_host: None,
             endpoint_path: endpoint_path.to_owned(),
             method: method.to_owned(),
-            status_code: Some(status_code),
+            status_code: Some(i32::from(status_code)),
             trace_id,
             task_id: task_id.map(str::to_owned),
             detail_json: detail,

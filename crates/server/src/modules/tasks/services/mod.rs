@@ -1,17 +1,20 @@
 //! Task frontier queue service: idempotency, rate limits, admission backpressure,
 //! NATS JetStream dispatch, fencing leases, and live steering.
 
+mod ops;
+
 use std::{sync::Arc, time::Duration};
 
 use agents_protocol::{
-    CursorPage, ExecutionScope, FencingToken, FollowUpMessage, SteeringMessage, StreamPayload,
-    TaskLease, TaskRequest, TaskState, WorkerStatus,
+    CursorPage, ExecutionScope, FencingToken, SteeringMessage, StreamPayload, TaskLease,
+    TaskRequest, TaskState, WorkerStatus,
 };
 use ironic::prelude::*;
 use serde_json::json;
 
 use crate::{
     infra::{
+        adapters::VectorStoreClient,
         config::ServerConfig,
         error::ServerError,
         events::{AppEventBus, TaskCompletedEvent},
@@ -24,8 +27,8 @@ use crate::{
         sessions::services::SessionService,
         tasks::{
             dto::{
-                CompleteTaskDto, FollowUpDto, LeaseTaskDto, ListTasksQuery, SteerTaskDto,
-                SubmitTaskDto, UpdateTaskStateDto,
+                CompleteTaskDto, LeaseTaskDto, ListTasksQuery, SteerTaskDto, SubmitTaskDto,
+                UpdateTaskStateDto,
             },
             entities::TaskEntity,
             repositories::TaskStore,
@@ -42,6 +45,7 @@ pub struct TaskService {
     bus: Arc<BusClient>,
     streams: Arc<StreamStore>,
     admission: Arc<AdmissionStore>,
+    vectors: Arc<VectorStoreClient>,
     config: Arc<ServerConfig>,
     audit: Arc<AuditService>,
     events: Arc<AppEventBus>,
@@ -375,6 +379,22 @@ impl TaskService {
             })
             .await;
 
+        let len_score = (updated.prompt.len() as f32).min(1000.0) / 1000.0;
+        let _ = self
+            .vectors
+            .0
+            .upsert(
+                &format!("task:{}", updated.id),
+                &[
+                    len_score,
+                    if dto.exit_code == 0 { 1.0 } else { 0.0 },
+                    0.5,
+                    0.25,
+                ],
+                Some(json!({ "sessionId": updated.session_id, "exitCode": dto.exit_code })),
+            )
+            .await;
+
         Ok(updated)
     }
 
@@ -415,72 +435,5 @@ impl TaskService {
         )
         .await;
         Ok(msg)
-    }
-
-    /// Enqueues an outer-loop follow-up prompt after BOLA ownership check.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ServerError::Forbidden`] or [`ServerError::NotFound`].
-    pub async fn queue_follow_up(
-        &self,
-        actor: &AuthenticatedActor,
-        session_id: &str,
-        dto: &FollowUpDto,
-    ) -> Result<FollowUpMessage, ServerError> {
-        let _ = self.sessions.get_owned(actor, session_id).await?;
-        let follow_up = FollowUpMessage {
-            message_id: uuid::Uuid::new_v4().to_string(),
-            session_id: session_id.to_owned(),
-            content: dto.content.clone(),
-            queued_at_ms: now_ms(),
-        };
-        let _ = emit_stream_event(
-            &self.streams,
-            &self.bus,
-            session_id,
-            None,
-            StreamPayload::TaskChunk {
-                chunk: format!("[follow-up queued: {}]", follow_up.message_id),
-                is_stderr: false,
-            },
-        )
-        .await;
-        Ok(follow_up)
-    }
-
-    /// Cancels a non-terminal task and broadcasts cancellation with its current fencing token.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`ServerError::Forbidden`], [`ServerError::NotFound`], or [`ServerError::Conflict`].
-    pub async fn cancel(
-        &self,
-        actor: &AuthenticatedActor,
-        task_id: &str,
-    ) -> Result<TaskEntity, ServerError> {
-        let existing = self.get_owned(actor, task_id).await?;
-        let cancelled = self.store.0.cancel(&existing.id, now_ms()).await?;
-        self.bus
-            .0
-            .publish_task_cancel(
-                &cancelled.id,
-                &cancelled.session_id,
-                cancelled.fencing_token,
-            )
-            .await?;
-        let _ = emit_stream_event(
-            &self.streams,
-            &self.bus,
-            &cancelled.session_id,
-            Some(&cancelled.id),
-            StreamPayload::WorkerStateChanged {
-                node_id: "control-plane".to_owned(),
-                status: WorkerStatus::Done,
-                reason: Some("cancelled by user".to_owned()),
-            },
-        )
-        .await;
-        Ok(cancelled)
     }
 }

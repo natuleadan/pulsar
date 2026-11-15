@@ -15,6 +15,7 @@ base64 (cargo)                         0.22.1   MIT OR Apache-2.0         https:
 bytes (cargo)                          1.12.1   MIT                       https://github.com/tokio-rs/bytes
 chrono (cargo)                         0.4.45   MIT OR Apache-2.0         https://github.com/chronotope/chrono
 clap (cargo)                           4.6.7    MIT OR Apache-2.0         https://github.com/clap-rs/clap
+criterion (cargo)                      0.5.1    Apache-2.0 OR MIT         https://github.com/bheisler/criterion.rs
 crossterm (cargo)                      0.29.0   MIT                       https://github.com/crossterm-rs/crossterm
 dotenvy (cargo)                        0.15.7   MIT                       https://github.com/allan2/dotenvy
 ed25519-dalek (cargo)                  2.2.0    BSD-3-Clause              https://github.com/dalek-cryptography/curve25519-dalek/tree/main/ed25519-dalek
@@ -324,7 +325,7 @@ DEALINGS IN THE SOFTWARE.
 
 ==================================================
   Apache License
-  Applies to: base64 (cargo), rustls (cargo), tempfile (cargo), uuid (cargo)
+  Applies to: base64 (cargo), criterion (cargo), rustls (cargo), tempfile (cargo), uuid (cargo)
 ==================================================
 
 Apache License

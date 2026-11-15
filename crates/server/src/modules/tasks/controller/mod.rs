@@ -3,12 +3,12 @@
 use std::sync::Arc;
 
 use agents_protocol::{ApiKeyScope, CursorPage, FollowUpMessage, SteeringMessage, TaskLease};
-use ironic::prelude::*;
+use ironic::{Pagination, Response, prelude::*};
 
 use crate::{
     infra::{
         error::{ErrorResponse, validate_dto},
-        observability::PerRouteTimeoutInterceptor,
+        observability::{PerRouteTimeoutInterceptor, slice_paginated},
     },
     modules::{
         auth::{
@@ -24,6 +24,7 @@ use crate::{
             services::TaskService,
         },
     },
+    openapi::PaginatedPageResponse,
 };
 
 #[controller("/api/v1")]
@@ -91,6 +92,36 @@ impl TasksController {
             .list_for_session(&actor, &session_id, &query)
             .await?;
         Ok(Json(page))
+    }
+
+    #[get("/sessions/:session_id/tasks/page")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Read))]
+    #[api(
+        summary = "List tasks for a session with offset pagination",
+        tag = "Tasks",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Paginated tasks", json = PaginatedPageResponse)]
+    #[resp(401, "Unauthorized", json = ErrorResponse)]
+    #[resp(403, "Forbidden", json = ErrorResponse)]
+    #[resp(404, "Session not found", json = ErrorResponse)]
+    async fn list_for_session_page(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] session_id: String,
+        #[decorator(Pagination)] page: Pagination,
+    ) -> Result<Response, HttpError> {
+        require_scope(&actor, ApiKeyScope::Read)?;
+        let query = ListTasksQuery {
+            cursor: None,
+            limit: None,
+        };
+        let cursor_page = self
+            .service
+            .list_for_session(&actor, &session_id, &query)
+            .await?;
+        let (items, total) = slice_paginated(&cursor_page.items, page.offset(), page.limit());
+        Response::paginated(&items, total, page.offset(), page.limit())
     }
 
     #[post("/sessions/:session_id/follow-ups")]

@@ -293,3 +293,58 @@ fn owasp_asi_2026_and_fail_closed_crypto_invariants() {
     assert!(constant_time_eq_hex(&expected, &candidate));
     assert!(!constant_time_eq_hex(&expected, &tampered));
 }
+
+#[tokio::test]
+async fn owasp_tasks_pagination_bola_and_s3_presign_traversal_block() {
+    use agents_server::infra::adapters::{BlobStorePort, S3BlobStore};
+
+    let harness = build_test_harness(ServerConfig::for_tests()).await;
+    let (_, alice_jwt) = register_and_login(
+        &harness.router,
+        "alice-page@example.com",
+        "strong-alice-pass-99",
+    )
+    .await;
+    let (_, bob_jwt) = register_and_login(
+        &harness.router,
+        "bob-page@example.com",
+        "strong-bob-pass-99",
+    )
+    .await;
+
+    let (status, created) = send_json(
+        &harness.router,
+        Method::POST,
+        "/api/v1/sessions",
+        Some(&alice_jwt),
+        Some(json!({ "title": "Alice Private", "mode": "plan" })),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let sid = created["id"].as_str().unwrap();
+
+    // BOLA check: Bob cannot query Alice's paginated task list.
+    let (bob_status, _) = send_json(
+        &harness.router,
+        Method::GET,
+        &format!("/api/v1/sessions/{sid}/tasks/page?limit=10&offset=0"),
+        Some(&bob_jwt),
+        None,
+    )
+    .await;
+    assert!(matches!(
+        bob_status,
+        StatusCode::FORBIDDEN | StatusCode::NOT_FOUND
+    ));
+
+    // S3 presign traversal check: path traversal `..` is rejected before signing.
+    let s3 = S3BlobStore::new(
+        "https://s3.internal".to_owned(),
+        "artifacts".to_owned(),
+        "ak".to_owned(),
+        "sk".to_owned(),
+    );
+    assert!(s3.presign_url("../etc/passwd", 60).await.is_err());
+    let signed = s3.presign_url("sess-1/out.txt", 60).await.unwrap();
+    assert!(signed.contains("X-Amz-Signature="));
+}
