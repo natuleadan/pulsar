@@ -185,7 +185,38 @@ pub async fn try_run_agent_engine(
     if req.prompt.starts_with("sh:") {
         return None;
     }
-    let endpoint = detect_llm_endpoint()?;
+    let endpoint = if let Some(spec) = &req.inference {
+        let kind = match spec.kind.trim().to_ascii_lowercase().as_str() {
+            "anthropic" => ProviderKind::Anthropic,
+            _ => ProviderKind::OpenAi,
+        };
+        let mut default_headers = HashMap::new();
+        if let Some(key) = spec
+            .api_key
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            match kind {
+                ProviderKind::Anthropic => {
+                    default_headers.insert("x-api-key".to_owned(), key.to_owned());
+                }
+                _ => {
+                    default_headers.insert("authorization".to_owned(), format!("Bearer {key}"));
+                }
+            }
+        }
+        ProviderEndpointConfig {
+            id: "default".to_owned(),
+            kind,
+            base_url: spec.base_url.clone(),
+            model: spec.model.clone(),
+            api_key_env: None,
+            default_headers,
+        }
+    } else {
+        detect_llm_endpoint()?
+    };
 
     let mut registry = ProviderRegistry::new();
     let endpoint_id = endpoint.id.clone();

@@ -70,6 +70,7 @@ opentelemetry-otlp = { version = "0.28", default-features = false, features = ["
 opentelemetry_sdk = { version = "0.28", default-features = false, features = ["trace", "rt-tokio"] }
 redis = { version = "1.3", default-features = false, features = ["aio", "tokio-comp", "connection-manager", "script", "tokio-rustls-comp"] }
 reqwest = { version = "0.13", default-features = false, features = ["json", "rustls"] }
+ring = "0.17"
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 scalar_api_reference = { version = "0.2", features = ["axum"] }
 serde = { version = "1", features = ["derive"] }

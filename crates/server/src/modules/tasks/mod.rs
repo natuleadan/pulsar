@@ -17,6 +17,7 @@ pub use services::TaskService;
     imports = [
         crate::app::InfraModule,
         crate::modules::audit::AuditModule,
+        crate::modules::providers::ProvidersModule,
         crate::modules::sessions::SessionsModule,
     ],
     providers = [TaskService],

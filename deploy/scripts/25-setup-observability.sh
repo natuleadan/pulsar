@@ -86,9 +86,11 @@ if [[ -f "${ENV_FILE}" ]]; then
     sed -i '/^AGENTS_OTEL_ENDPOINT=/d' "${ENV_FILE}"
     sed -i '/^OTLP_ENDPOINT=/d' "${ENV_FILE}"
     sed -i '/^OTEL_EXPORTER_OTLP_ENDPOINT=/d' "${ENV_FILE}"
-    echo "AGENTS_OTEL_ENDPOINT=${OTEL_ENDPOINT}" >>"${ENV_FILE}"
-    echo "OTLP_ENDPOINT=${OTEL_ENDPOINT}" >>"${ENV_FILE}"
-    echo "OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_ENDPOINT}" >>"${ENV_FILE}"
+    {
+      echo "AGENTS_OTEL_ENDPOINT=${OTEL_ENDPOINT}"
+      echo "OTLP_ENDPOINT=${OTEL_ENDPOINT}"
+      echo "OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_ENDPOINT}"
+    } >>"${ENV_FILE}"
     echo "[INFO] Configured OTLP endpoint: ${OTEL_ENDPOINT}"
 
     if command -v docker >/dev/null 2>&1; then

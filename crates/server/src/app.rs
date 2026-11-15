@@ -10,10 +10,7 @@ use ironic::{
     metrics::MetricsModule,
     prelude::*,
     register_health_indicator,
-    security::{
-        CorsConfig, CorsMiddleware, RateLimitMiddleware, SecurityHeadersConfig,
-        SecurityHeadersMiddleware,
-    },
+    security::{CorsConfig, CorsMiddleware, SecurityHeadersConfig, SecurityHeadersMiddleware},
 };
 use tower::ServiceExt;
 
@@ -65,6 +62,10 @@ use crate::{
         },
         mcp::{McpModule, controller::McpHttpState, services::McpHostService},
         nodes::{NodeHttpState, NodeRegistryService, NodeRegistryStore, NodesModule},
+        providers::{
+            InMemoryProviderRepository, PgProviderRepository, ProviderService, ProviderStore,
+            ProvidersModule,
+        },
         sessions::{
             SessionsModule,
             repositories::{InMemorySessionRepository, PgSessionRepository, SessionStore},
@@ -114,6 +115,7 @@ impl Module for InfraModule {
             .provider(ProviderDefinition::value(AutocronStore::default()))
             .provider(ProviderDefinition::value(IdentityStore::default()))
             .provider(ProviderDefinition::value(A2aTaskStore::default()))
+            .provider(ProviderDefinition::value(ProviderStore::default()))
             .export::<ServerConfig>()
             .export::<AppCache>()
             .export::<AppEventBus>()
@@ -135,6 +137,7 @@ impl Module for InfraModule {
             .export::<AutocronStore>()
             .export::<IdentityStore>()
             .export::<A2aTaskStore>()
+            .export::<ProviderStore>()
             .lifecycle(
                 LifecycleDefinition::builder::<SecurityLifecycleHook>()
                     .guard_denied()
@@ -166,6 +169,7 @@ impl Module for InfraModule {
     McpModule,
     IdentityModule,
     A2aModule,
+    ProvidersModule,
 ])]
 pub struct AppModule;
 
@@ -188,6 +192,7 @@ pub struct InfrastructureHandles {
     pub autocron_store: AutocronStore,
     pub identity_store: IdentityStore,
     pub a2a_store: A2aTaskStore,
+    pub provider_store: ProviderStore,
 }
 
 impl InfrastructureHandles {
@@ -225,6 +230,7 @@ impl InfrastructureHandles {
             autocron_store,
             identity_store,
             a2a_store,
+            provider_store,
         ) = match database.as_ref() {
             Some(db) => {
                 let pool = db.pool().clone();
@@ -238,7 +244,8 @@ impl InfrastructureHandles {
                     WorkflowStore(PgWorkflowRepository::new(pool.clone())),
                     AutocronStore(PgAutocronRepository::new(pool.clone())),
                     IdentityStore(Arc::new(PgIdentityRepository::new(pool.clone()))),
-                    A2aTaskStore(Arc::new(PgA2aRepository::new(pool))),
+                    A2aTaskStore(Arc::new(PgA2aRepository::new(pool.clone()))),
+                    ProviderStore(Arc::new(PgProviderRepository::new(pool))),
                 )
             }
             None => (
@@ -252,6 +259,7 @@ impl InfrastructureHandles {
                 AutocronStore(InMemoryAutocronRepository::new()),
                 IdentityStore(Arc::new(InMemoryIdentityRepository::default())),
                 A2aTaskStore(Arc::new(InMemoryA2aRepository::default())),
+                ProviderStore(Arc::new(InMemoryProviderRepository::default())),
             ),
         };
 
@@ -273,6 +281,7 @@ impl InfrastructureHandles {
             autocron_store,
             identity_store,
             a2a_store,
+            provider_store,
         })
     }
 
@@ -304,6 +313,7 @@ impl InfrastructureHandles {
             autocron_store: AutocronStore(InMemoryAutocronRepository::new()),
             identity_store: IdentityStore(Arc::new(InMemoryIdentityRepository::default())),
             a2a_store: A2aTaskStore(Arc::new(InMemoryA2aRepository::default())),
+            provider_store: ProviderStore(Arc::new(InMemoryProviderRepository::default())),
         }
     }
 }
@@ -353,33 +363,7 @@ pub async fn build_application(
     let doc_cell = Arc::clone(&enriched_openapi_cell);
 
     let rate_limiter =
-        RateLimitMiddleware::new(global_ip_rate_max, rate_win).with_key_resolver(Arc::new(|ctx| {
-            let req = ctx.request();
-            if let Some(agent_id) = req
-                .headers()
-                .get("x-agent-id")
-                .or_else(|| req.headers().get("x-box-id"))
-                .and_then(|h| h.to_str().ok())
-                .filter(|s| !s.is_empty())
-            {
-                return format!("agent:{agent_id}");
-            }
-            if let Some(api_key) = req
-                .headers()
-                .get("x-api-key")
-                .and_then(|h| h.to_str().ok())
-                .filter(|s| !s.is_empty())
-            {
-                return format!("key:{api_key}");
-            }
-            req.headers()
-                .get("x-forwarded-for")
-                .and_then(|v| v.to_str().ok())
-                .and_then(|all| all.split(',').next_back().map(str::trim))
-                .filter(|ip| !ip.is_empty())
-                .unwrap_or("127.0.0.1")
-                .to_owned()
-        }));
+        crate::infra::observability::build_rate_limiter(global_ip_rate_max, rate_win);
 
     let event_bus = AppEventBus::new();
     let circuit_breaker = AgentCircuitBreaker::new();
@@ -406,6 +390,7 @@ pub async fn build_application(
         .override_provider(ProviderDefinition::value(infra.autocron_store))
         .override_provider(ProviderDefinition::value(infra.identity_store))
         .override_provider(ProviderDefinition::value(infra.a2a_store))
+        .override_provider(ProviderDefinition::value(infra.provider_store))
         .middleware(SecurityHeadersMiddleware::new(
             SecurityHeadersConfig::default(),
         ))
@@ -482,8 +467,14 @@ pub async fn build_application(
         .resolve::<NodeRegistryService>()
         .await
         .map_err(|e| ServerError::Internal(e.to_string()))?;
+    let providers = app
+        .container()
+        .resolve::<ProviderService>()
+        .await
+        .map_err(|e| ServerError::Internal(e.to_string()))?;
 
     auth.seed_admin_if_configured().await?;
+    providers.seed_default_if_empty().await?;
 
     let _ = lazy_gateway.set(GatewayHttpState {
         auth: Arc::clone(&auth),

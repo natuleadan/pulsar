@@ -89,6 +89,7 @@ pub async fn build_test_harness_with_config(config: ServerConfig) -> TestHarness
         autocron_store: AutocronStore(Arc::clone(&autocron_repo) as Arc<dyn AutocronRepository>),
         identity_store: IdentityStore(Arc::new(InMemoryIdentityRepository::default())),
         a2a_store: A2aTaskStore(Arc::new(InMemoryA2aRepository::default())),
+        provider_store: Default::default(),
     };
 
     let app = build_application(infra)

@@ -24,6 +24,7 @@ use crate::{
     modules::{
         audit::services::AuditService,
         auth::{entities::AuthenticatedActor, guards::ensure_owner, services::StateStore},
+        providers::services::ProviderService,
         sessions::services::SessionService,
         tasks::{
             dto::{
@@ -48,6 +49,7 @@ pub struct TaskService {
     vectors: Arc<VectorStoreClient>,
     config: Arc<ServerConfig>,
     audit: Arc<AuditService>,
+    providers: Arc<ProviderService>,
     events: Arc<AppEventBus>,
 }
 
@@ -145,6 +147,7 @@ impl TaskService {
                 .await;
         }
 
+        let inference = self.providers.resolve_active_endpoint().await?;
         let nats_req = TaskRequest {
             task_id: created.id.clone(),
             session_id: created.session_id.clone(),
@@ -155,6 +158,7 @@ impl TaskService {
             idempotency_key: created.idempotency_key.clone(),
             sandbox: dto.sandbox.clone(),
             exec: dto.exec.clone().unwrap_or_default(),
+            inference,
         };
         self.bus.0.publish_task_request(&nats_req).await?;
 

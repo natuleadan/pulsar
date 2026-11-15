@@ -161,6 +161,28 @@ impl<'de> Deserialize<'de> for StopReason {
     }
 }
 
+/// Runtime inference endpoint specification attached by Server when dispatching a task.
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InferenceEndpointSpec {
+    pub kind: String,
+    pub base_url: String,
+    pub model: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+}
+
+impl std::fmt::Debug for InferenceEndpointSpec {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("InferenceEndpointSpec")
+            .field("kind", &self.kind)
+            .field("base_url", &self.base_url)
+            .field("model", &self.model)
+            .field("api_key", &self.api_key.as_ref().map(|_| "[REDACTED]"))
+            .finish()
+    }
+}
+
 /// Task request dispatched from Server to Boxer via NATS JetStream.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -180,6 +202,8 @@ pub struct TaskRequest {
     pub sandbox: Option<SandboxProfile>,
     #[serde(default)]
     pub exec: ExecOptions,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inference: Option<InferenceEndpointSpec>,
 }
 
 /// Active lease granted to a Boxer worker for executing a task.

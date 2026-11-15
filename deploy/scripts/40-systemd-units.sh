@@ -89,13 +89,14 @@ if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "server" ]]; then
   write_file /etc/systemd/system/agents-server.service <<EOF
 [Unit]
 Description=Agents Ironic Orchestrator Server
-After=network-online.target postgresql.service
-Wants=network-online.target
+After=network-online.target postgresql.service docker.service
+Wants=network-online.target docker.service
 
 [Service]
 Type=simple
 User=agents
 Group=agents
+Environment="OTEL_SERVICE_NAME=agents-server"
 EnvironmentFile=${ENV_FILE}
 ExecStart=${BIN_DIR}/agents-server
 Restart=on-failure
@@ -122,12 +123,13 @@ if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "boxer" ]]; then
 [Unit]
 Description=Agents Boxer Sandbox Supervisor
 After=network-online.target docker.service
-Wants=network-online.target
+Wants=network-online.target docker.service
 
 [Service]
 Type=simple
 User=agents
 Group=agents
+Environment="OTEL_SERVICE_NAME=agents-boxer"
 EnvironmentFile=${ENV_FILE}
 ExecStart=${BIN_DIR}/agents-boxer
 Restart=on-failure

@@ -62,6 +62,7 @@ pub fn spawn_inbound_dispatcher(
                     }),
                     exec: Default::default(),
                     timeout_seconds: Some(120),
+                    inference: None,
                 };
                 let _ = message_bus.publish_task_request(&req).await;
             }

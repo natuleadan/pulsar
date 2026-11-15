@@ -428,6 +428,7 @@ async fn boxer_daemon_executes_hermetic_task_emits_telemetry_and_completes_fence
                     gateway_url: None,
                 }),
                 exec: ExecOptions::default(),
+                inference: None,
             },
             None,
         )

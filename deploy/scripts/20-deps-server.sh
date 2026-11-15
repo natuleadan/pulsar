@@ -135,6 +135,19 @@ if [[ -z "${DOMAIN}" || "${DOMAIN}" == "localhost" || "${DOMAIN}" =~ ^[0-9]+\.[0
 fi
 
 if [[ "${IS_BARE_IP}" == "1" ]]; then
+  if [[ "${DRY_RUN}" == "1" ]]; then
+    echo "[DRY-RUN] generate self-signed TLS cert in /etc/traefik/certs/selfsigned.{crt,key}"
+  else
+    mkdir -p /etc/traefik/certs
+    if [[ ! -f /etc/traefik/certs/selfsigned.crt || ! -f /etc/traefik/certs/selfsigned.key ]]; then
+      openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 365 \
+        -subj "/CN=${DOMAIN:-127.0.0.1}" \
+        -keyout /etc/traefik/certs/selfsigned.key \
+        -out /etc/traefik/certs/selfsigned.crt >/dev/null 2>&1
+      chmod 600 /etc/traefik/certs/selfsigned.key
+    fi
+  fi
+
   write_file /etc/traefik/traefik.yml <<EOF
 api:
   dashboard: false
@@ -142,6 +155,11 @@ api:
 entryPoints:
   web:
     address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
   websecure:
     address: ":443"
 
@@ -155,21 +173,31 @@ providers:
 EOF
 
   write_file /etc/traefik/dynamic/agents-core.yml <<'EOF'
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/selfsigned.crt
+        keyFile: /etc/traefik/certs/selfsigned.key
+
 http:
   middlewares:
     agents-security-headers:
       headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
         contentTypeNosniff: true
         frameDeny: true
   routers:
-    agents-api-http:
+    agents-api-https:
       rule: "PathPrefix(`/`)"
       priority: 1
       entryPoints:
-        - web
+        - websecure
       service: agents-server
       middlewares:
         - agents-security-headers
+      tls: {}
   services:
     agents-server:
       loadBalancer:
