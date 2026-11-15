@@ -14,7 +14,7 @@ pub use apm::ApmConfig;
 pub use health::ProviderHealthIndicator;
 pub use lifecycle::{LifecycleManager, LifecycleSnapshot};
 pub use logging::{
-    LoggingConfig, SystemLogQueryDto, SystemLogsResponse, archive_logs_to_blob,
+    LoggingConfig, OtelGuard, SystemLogQueryDto, SystemLogsResponse, archive_logs_to_blob,
     init_structured_logging, query_jsonl_logs,
 };
 pub use metrics::DomainMetrics;

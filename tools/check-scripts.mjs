@@ -14,9 +14,12 @@ const EXPECTED_SCRIPTS = [
   "00-preflight.sh",
   "10-hardening.sh",
   "20-deps-server.sh",
+  "25-setup-observability.sh",
   "30-deps-boxer.sh",
   "40-systemd-units.sh",
+  "50-autoupdate.sh",
   "90-doctor.sh",
+  "95-validate-metrics.sh",
 ]
 
 if (!existsSync(SCRIPTS_DIR)) {

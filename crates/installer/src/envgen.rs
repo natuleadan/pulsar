@@ -17,6 +17,8 @@ pub struct GeneratedSecrets {
     pub valkey_password: String,
     pub nats_nkey_seed: String,
     pub nats_public_nkey: String,
+    pub s3_access_key: String,
+    pub s3_secret_key: String,
 }
 
 impl fmt::Debug for GeneratedSecrets {
@@ -28,6 +30,8 @@ impl fmt::Debug for GeneratedSecrets {
             .field("valkey_password", &"[REDACTED]")
             .field("nats_nkey_seed", &"[REDACTED]")
             .field("nats_public_nkey", &self.nats_public_nkey)
+            .field("s3_access_key", &"[REDACTED]")
+            .field("s3_secret_key", &"[REDACTED]")
             .finish()
     }
 }
@@ -42,6 +46,8 @@ impl GeneratedSecrets {
         let valkey_password = random_hex_256("valkey")[..36].to_owned();
         let seed_hex = random_hex_256("nats-seed");
         let pub_hex = random_hex_256("nats-pub");
+        let s3_access_key = format!("ag_{}", &random_hex_256("s3-ak")[..20]);
+        let s3_secret_key = random_hex_256("s3-sk")[..40].to_owned();
         Self {
             jwt_secret,
             credential_master_key,
@@ -49,6 +55,8 @@ impl GeneratedSecrets {
             valkey_password,
             nats_nkey_seed: format!("SU{}", seed_hex[..54].to_ascii_uppercase()),
             nats_public_nkey: format!("UA{}", pub_hex[..54].to_ascii_uppercase()),
+            s3_access_key,
+            s3_secret_key,
         }
     }
 }
@@ -107,6 +115,16 @@ pub fn render_env_file(spec: &TopologySpec, secrets: &GeneratedSecrets) -> Strin
         format!("TRAEFIK_PREVIEW_DOMAIN={}", spec.preview_domain),
         format!("TRAEFIK_ACME_EMAIL={acme_email}"),
         format!("TRAEFIK_VLAN_SUBNET={}", spec.vlan_cidr),
+        "S3_ENDPOINT=http://127.0.0.1:9000".to_owned(),
+        "S3_BUCKET=agents-artifacts".to_owned(),
+        "S3_REGION=us-east-1".to_owned(),
+        format!("S3_ACCESS_KEY={}", secrets.s3_access_key),
+        format!("S3_SECRET_KEY={}", secrets.s3_secret_key),
+        "S3_PRESIGN_TTL_SECS=900".to_owned(),
+        "OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4317".to_owned(),
+        "OTEL_SERVICE_NAME=agents-server".to_owned(),
+        "AGENTS_ORG_NAME=default".to_owned(),
+        format!("AGENTS_INSTALLATION_ID={}", Uuid::new_v4()),
     ];
 
     if let Some(ip) = spec.vlan_ip {

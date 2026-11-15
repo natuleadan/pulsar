@@ -3,6 +3,7 @@
 pub mod blob;
 pub mod qstash;
 pub mod registry;
+pub mod s3_sigv4;
 pub mod vector;
 
 pub use blob::{BlobStorePort, LocalFsBlobStore, S3BlobStore, UpstashBlobStore};

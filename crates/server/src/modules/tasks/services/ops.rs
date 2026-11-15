@@ -13,6 +13,19 @@ use crate::{
 use super::TaskService;
 
 impl TaskService {
+    /// Looks up a task by ID without actor ownership check (internal worker dispatch only).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerError::NotFound`] when the task does not exist.
+    pub async fn get_unscoped(&self, task_id: &str) -> Result<TaskEntity, ServerError> {
+        self.store
+            .0
+            .find_by_id(task_id)
+            .await?
+            .ok_or_else(|| ServerError::NotFound("task not found".into()))
+    }
+
     /// Enqueues an outer-loop follow-up prompt after BOLA ownership check.
     ///
     /// # Errors

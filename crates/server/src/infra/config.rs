@@ -96,6 +96,12 @@ pub struct ServerConfig {
     pub upstash_vector_rest_url: Option<String>,
     pub upstash_vector_rest_token: Option<String>,
     pub upstash_blob_token: Option<String>,
+    pub s3_endpoint: Option<String>,
+    pub s3_bucket: String,
+    pub s3_region: String,
+    pub s3_access_key: Option<String>,
+    pub s3_secret_key: Option<String>,
+    pub s3_presign_ttl_secs: u64,
     pub upstash_box_token: Option<String>,
     pub deepinfra_token: Option<String>,
     pub deepseek_api_key: Option<String>,
@@ -134,6 +140,12 @@ impl fmt::Debug for ServerConfig {
             .field("upstash_vector_rest_url", &self.upstash_vector_rest_url)
             .field("upstash_vector_rest_token", &"[REDACTED]")
             .field("upstash_blob_token", &"[REDACTED]")
+            .field("s3_endpoint", &self.s3_endpoint)
+            .field("s3_bucket", &self.s3_bucket)
+            .field("s3_region", &self.s3_region)
+            .field("s3_access_key", &"[REDACTED]")
+            .field("s3_secret_key", &"[REDACTED]")
+            .field("s3_presign_ttl_secs", &self.s3_presign_ttl_secs)
             .field("upstash_box_token", &"[REDACTED]")
             .field("deepinfra_token", &"[REDACTED]")
             .field("deepseek_api_key", &"[REDACTED]")
@@ -278,6 +290,12 @@ impl ServerConfig {
             upstash_vector_rest_url,
             upstash_vector_rest_token,
             upstash_blob_token,
+            s3_endpoint: opt("S3_ENDPOINT").or_else(|| opt("RUSTFS_ENDPOINT")),
+            s3_bucket: env_or_local("S3_BUCKET", "agents-artifacts"),
+            s3_region: env_or_local("S3_REGION", "us-east-1"),
+            s3_access_key: opt("S3_ACCESS_KEY").or_else(|| opt("RUSTFS_ACCESS_KEY")),
+            s3_secret_key: opt("S3_SECRET_KEY").or_else(|| opt("RUSTFS_SECRET_KEY")),
+            s3_presign_ttl_secs: parse_u64("S3_PRESIGN_TTL_SECS", 900)?,
             upstash_box_token,
             deepinfra_token,
             deepseek_api_key,
@@ -318,6 +336,12 @@ impl ServerConfig {
             upstash_vector_rest_url: None,
             upstash_vector_rest_token: None,
             upstash_blob_token: None,
+            s3_endpoint: None,
+            s3_bucket: "agents-artifacts".to_owned(),
+            s3_region: "us-east-1".to_owned(),
+            s3_access_key: None,
+            s3_secret_key: None,
+            s3_presign_ttl_secs: 900,
             upstash_box_token: None,
             deepinfra_token: None,
             deepseek_api_key: None,

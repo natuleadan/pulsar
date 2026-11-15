@@ -79,11 +79,16 @@ write_file() {
 
 if [[ "${DRY_RUN}" == "1" ]]; then
   echo "[DRY-RUN] install docker.io uidmap dbus-user-session fuse-overlayfs (runtime=${RUNTIME})"
+  echo "[DRY-RUN] add agents user to docker group and ensure agents-vlan docker network"
 else
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y
   apt-get install -y docker.io uidmap dbus-user-session fuse-overlayfs
   systemctl enable --now docker
+  if id -u agents >/dev/null 2>&1; then
+    usermod -aG docker agents
+  fi
+  docker network inspect agents-vlan >/dev/null 2>&1 || docker network create --driver bridge agents-vlan >/dev/null
 fi
 
 write_file /etc/docker/daemon.json <<'EOF'

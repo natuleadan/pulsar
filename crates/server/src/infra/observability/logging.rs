@@ -10,7 +10,12 @@ use std::{
 use ironic::{
     OpenApiSchema,
     logging::{FileLogStorage, TimeSeriesConfig},
-    telemetry::TracingGuard,
+};
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithExportConfig as _;
+use opentelemetry_sdk::{
+    Resource,
+    trace::{Sampler, SdkTracerProvider},
 };
 use serde::{Deserialize, Serialize};
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
@@ -122,30 +127,89 @@ fn build_env_filter(base_level: &str) -> EnvFilter {
     })
 }
 
+/// Guard that flushes and shuts down the OTLP tracer provider on process exit.
+pub struct OtelGuard {
+    provider: SdkTracerProvider,
+}
+
+impl Drop for OtelGuard {
+    fn drop(&mut self) {
+        if let Err(err) = self.provider.shutdown() {
+            tracing::warn!(error = %err, "Failed to flush OTLP tracer provider on shutdown");
+        }
+    }
+}
+
+fn build_otlp_provider(apm: &ApmConfig, endpoint: &str) -> Option<SdkTracerProvider> {
+    let sampler = if (apm.sample_rate - 1.0).abs() < f64::EPSILON {
+        Sampler::AlwaysOn
+    } else if apm.sample_rate <= 0.0 {
+        Sampler::AlwaysOff
+    } else {
+        Sampler::TraceIdRatioBased(apm.sample_rate)
+    };
+    let exporter = match opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .with_endpoint(endpoint)
+        .with_timeout(std::time::Duration::from_millis(apm.batch_interval_ms))
+        .build()
+    {
+        Ok(exp) => exp,
+        Err(err) => {
+            eprintln!("[WARN] Failed to initialize OTLP span exporter ({endpoint}): {err}");
+            return None;
+        }
+    };
+    let provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .with_sampler(sampler)
+        .with_resource(
+            Resource::builder_empty()
+                .with_service_name(apm.service_name.clone())
+                .build(),
+        )
+        .build();
+    opentelemetry::global::set_tracer_provider(provider.clone());
+    Some(provider)
+}
+
 /// Initializes structured logging (`fmt` + Ironic `TimeSeriesLayer` -> `YYYY-MM-DD.jsonl`)
-/// and optional OTLP distributed tracing when `AGENTS_OTEL_ENDPOINT` / `OTLP_ENDPOINT` is set.
+/// and real OTLP distributed tracing when `OTEL_EXPORTER_OTLP_ENDPOINT` / `AGENTS_OTEL_ENDPOINT` / `OTLP_ENDPOINT` is set.
 #[must_use]
-pub fn init_structured_logging(logging: &LoggingConfig, apm: &ApmConfig) -> Option<TracingGuard> {
+pub fn init_structured_logging(logging: &LoggingConfig, apm: &ApmConfig) -> Option<OtelGuard> {
     let writable_dir = logging.resolve_writable_dir();
     let storage = Arc::new(FileLogStorage::new(&writable_dir));
     let ts_layer = TimeSeriesConfig::default().with_storage(storage).layer();
     let ts_filter = build_env_filter(&logging.level);
     let fmt_filter = build_env_filter(&logging.level);
 
+    let otlp_provider = apm
+        .otlp_endpoint
+        .as_deref()
+        .and_then(|endpoint| build_otlp_provider(apm, endpoint));
+    let otel_layer = otlp_provider.as_ref().map(|provider| {
+        let tracer = provider.tracer("agents-server");
+        tracing_opentelemetry::layer().with_tracer(tracer)
+    });
+
     let _ = tracing_subscriber::registry()
         .with(ts_layer.with_filter(ts_filter))
         .with(tracing_subscriber::fmt::layer().with_filter(fmt_filter))
+        .with(otel_layer)
         .try_init();
 
-    if let Some(endpoint) = &apm.otlp_endpoint {
+    if let Some(endpoint) = &apm.otlp_endpoint
+        && otlp_provider.is_some()
+    {
         tracing::info!(
             service = %apm.service_name,
             otlp_endpoint = %endpoint,
-            "JSONL TimeSeriesLayer active alongside OTLP configuration"
+            sample_rate = apm.sample_rate,
+            "OpenTelemetry OTLP exporter active alongside JSONL TimeSeriesLayer"
         );
     }
 
-    None
+    otlp_provider.map(|provider| OtelGuard { provider })
 }
 
 /// Query parameters for filtering structured JSONL logs.

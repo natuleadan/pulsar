@@ -364,10 +364,26 @@ impl BoxerDaemon {
         }
 
         let output = exec_out?;
-        let manifest_summary = ArtifactPackager::default()
+        let manifest_summary = match ArtifactPackager::default()
             .package_directory(&req.task_id, &output.working_dir)
-            .map(|m| format!("artifacts={} bytes={}", m.files.len(), m.total_bytes))
-            .unwrap_or_else(|_| "artifacts=0".to_owned());
+        {
+            Ok(m) => {
+                let uploaded = agent_bridge::upload_packaged_artifacts(
+                    &self.config,
+                    &req.task_id,
+                    &output.working_dir,
+                    &m,
+                )
+                .await;
+                format!(
+                    "artifacts={} uploaded={} bytes={}",
+                    m.files.len(),
+                    uploaded,
+                    m.total_bytes
+                )
+            }
+            Err(_) => "artifacts=0".to_owned(),
+        };
 
         let stop_reason = if output.cancelled {
             StopReason::Aborted

@@ -366,3 +366,65 @@ impl BoxerDaemon {
         Ok(msg)
     }
 }
+
+/// Uploads packaged task artifacts to the control-plane `/api/v1/tasks/:id/artifacts/worker` endpoint.
+pub async fn upload_packaged_artifacts(
+    config: &BoxerConfig,
+    task_id: &str,
+    working_dir: &std::path::Path,
+    manifest: &agents_protocol::ArtifactManifest,
+) -> usize {
+    use base64::Engine;
+
+    if manifest.files.is_empty() {
+        return 0;
+    }
+    let client = reqwest::Client::new();
+    let url = format!(
+        "{}/api/v1/tasks/{task_id}/artifacts/worker",
+        config.server_internal_url.trim_end_matches('/')
+    );
+    let token = if !config.worker_token.is_empty() {
+        config.worker_token.as_str()
+    } else {
+        config.cluster_secret.as_str()
+    };
+    let mut uploaded = 0_usize;
+    for entry in &manifest.files {
+        let path = working_dir.join(&entry.path);
+        let Ok(bytes) = tokio::fs::read(&path).await else {
+            continue;
+        };
+        let filename = std::path::Path::new(&entry.path)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("artifact.bin");
+        let payload = serde_json::json!({
+            "filename": filename,
+            "contentType": entry.content_type,
+            "dataBase64": base64::engine::general_purpose::STANDARD.encode(&bytes),
+        });
+        match client
+            .post(&url)
+            .header("x-boxer-worker-token", token)
+            .json(&payload)
+            .send()
+            .await
+        {
+            Ok(resp) if resp.status().is_success() => uploaded += 1,
+            Ok(resp) => tracing::warn!(
+                task_id = %task_id,
+                filename = %filename,
+                status = %resp.status(),
+                "artifact upload rejected by control plane"
+            ),
+            Err(err) => tracing::warn!(
+                task_id = %task_id,
+                filename = %filename,
+                error = %err,
+                "artifact upload request failed"
+            ),
+        }
+    }
+    uploaded
+}

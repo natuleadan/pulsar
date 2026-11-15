@@ -14,8 +14,42 @@ use agents_boxer::{
 };
 use clap::Parser;
 use ironic::logging::{FileLogStorage, TimeSeriesConfig};
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithExportConfig as _;
+use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
 use tracing::info;
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
+
+struct BoxerOtelGuard(SdkTracerProvider);
+
+impl Drop for BoxerOtelGuard {
+    fn drop(&mut self) {
+        let _ = self.0.shutdown();
+    }
+}
+
+fn build_boxer_otlp(endpoint: &str) -> Option<SdkTracerProvider> {
+    let service_name = std::env::var("OTEL_SERVICE_NAME")
+        .ok()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "agents-boxer".to_owned());
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .with_endpoint(endpoint)
+        .build()
+        .ok()?;
+    let provider = SdkTracerProvider::builder()
+        .with_batch_exporter(exporter)
+        .with_resource(
+            Resource::builder_empty()
+                .with_service_name(service_name)
+                .build(),
+        )
+        .build();
+    opentelemetry::global::set_tracer_provider(provider.clone());
+    Some(provider)
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,17 +75,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let fmt_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         EnvFilter::new("info,hyper=warn,hyper_util=warn,reqwest=warn,h2=warn,async_nats=warn")
     });
+    let otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+        .or_else(|_| std::env::var("AGENTS_OTEL_ENDPOINT"))
+        .or_else(|_| std::env::var("OTLP_ENDPOINT"))
+        .ok()
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty());
+    let otlp_provider = otel_endpoint.as_deref().and_then(build_boxer_otlp);
+    let otel_layer = otlp_provider.as_ref().map(|provider| {
+        let tracer = provider.tracer("agents-boxer");
+        tracing_opentelemetry::layer().with_tracer(tracer)
+    });
+
     let _ = tracing_subscriber::registry()
         .with(ts_layer.with_filter(ts_filter))
         .with(tracing_subscriber::fmt::layer().with_filter(fmt_filter))
+        .with(otel_layer)
         .try_init();
 
-    if let Some(otel) = std::env::var("AGENTS_OTEL_ENDPOINT")
-        .ok()
-        .or_else(|| std::env::var("OTLP_ENDPOINT").ok())
-        .filter(|s| !s.trim().is_empty())
+    let _otel_guard = otlp_provider.map(BoxerOtelGuard);
+    if let Some(otel) = otel_endpoint
+        && _otel_guard.is_some()
     {
-        info!(otlp_endpoint = %otel, "agents-boxer OTLP exporter endpoint configured alongside JSONL TimeSeriesLayer");
+        info!(otlp_endpoint = %otel, "agents-boxer OTLP exporter active alongside JSONL TimeSeriesLayer");
     }
 
     let cli = BoxerCli::parse();

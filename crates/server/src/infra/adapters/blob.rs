@@ -227,6 +227,7 @@ impl BlobStorePort for UpstashBlobStore {
 pub struct S3BlobStore {
     endpoint: String,
     bucket: String,
+    region: String,
     access_key: String,
     secret_key: String,
     client: reqwest::Client,
@@ -235,23 +236,102 @@ pub struct S3BlobStore {
 impl S3BlobStore {
     #[must_use]
     pub fn new(endpoint: String, bucket: String, access_key: String, secret_key: String) -> Self {
+        Self::with_region(
+            endpoint,
+            bucket,
+            "us-east-1".to_owned(),
+            access_key,
+            secret_key,
+        )
+    }
+
+    #[must_use]
+    pub fn with_region(
+        endpoint: String,
+        bucket: String,
+        region: String,
+        access_key: String,
+        secret_key: String,
+    ) -> Self {
         Self {
             endpoint: endpoint.trim_end_matches('/').to_owned(),
             bucket: bucket.trim_matches('/').to_owned(),
+            region,
             access_key,
             secret_key,
             client: reqwest::Client::new(),
         }
     }
 
-    fn object_url(&self, key: &str) -> Result<String, ServerError> {
+    fn object_path_and_url(&self, key: &str) -> Result<(String, String), ServerError> {
         let clean = key.trim_start_matches('/');
         if clean.contains("..") || clean.contains('\\') {
             return Err(ServerError::Validation(
                 "invalid s3 blob key traversal".into(),
             ));
         }
-        Ok(format!("{}/{}/{}", self.endpoint, self.bucket, clean))
+        let (_, prefix) = super::s3_sigv4::parse_endpoint(&self.endpoint);
+        let uri_path = format!("{prefix}/{}/{}", self.bucket, clean);
+        let url = format!("{}/{}/{}", self.endpoint, self.bucket, clean);
+        Ok((uri_path, url))
+    }
+
+    /// Ensures the configured bucket exists in RustFS / S3 (`HEAD`, then `PUT` on 404).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerError::Internal`] if the S3 endpoint is unreachable or rejects bucket creation.
+    pub async fn ensure_bucket(&self) -> Result<(), ServerError> {
+        let (_, prefix) = super::s3_sigv4::parse_endpoint(&self.endpoint);
+        let uri_path = format!("{prefix}/{}", self.bucket);
+        let url = format!("{}/{}", self.endpoint, self.bucket);
+        let head_sig = super::s3_sigv4::sign_request(
+            "HEAD",
+            &self.endpoint,
+            &uri_path,
+            &self.region,
+            &self.access_key,
+            &self.secret_key,
+            b"",
+        );
+        let head = self
+            .client
+            .head(&url)
+            .header("x-amz-date", head_sig.amz_date)
+            .header("x-amz-content-sha256", head_sig.payload_sha256)
+            .header(reqwest::header::AUTHORIZATION, head_sig.authorization)
+            .send()
+            .await
+            .map_err(|e| ServerError::Internal(format!("s3 head bucket network: {e}")))?;
+        if head.status().is_success() {
+            return Ok(());
+        }
+        let put_sig = super::s3_sigv4::sign_request(
+            "PUT",
+            &self.endpoint,
+            &uri_path,
+            &self.region,
+            &self.access_key,
+            &self.secret_key,
+            b"",
+        );
+        let put = self
+            .client
+            .put(&url)
+            .header("x-amz-date", put_sig.amz_date)
+            .header("x-amz-content-sha256", put_sig.payload_sha256)
+            .header(reqwest::header::AUTHORIZATION, put_sig.authorization)
+            .send()
+            .await
+            .map_err(|e| ServerError::Internal(format!("s3 create bucket network: {e}")))?;
+        if !put.status().is_success() && put.status().as_u16() != 409 {
+            let status = put.status();
+            let txt = put.text().await.unwrap_or_default();
+            return Err(ServerError::Internal(format!(
+                "s3 create bucket failed {status}: {txt}"
+            )));
+        }
+        Ok(())
     }
 }
 
@@ -263,12 +343,23 @@ impl BlobStorePort for S3BlobStore {
         content_type: &'a str,
     ) -> BoxFuture<'a, Result<String, ServerError>> {
         Box::pin(async move {
-            let url = self.object_url(key)?;
+            let (uri_path, url) = self.object_path_and_url(key)?;
+            let sig = super::s3_sigv4::sign_request(
+                "PUT",
+                &self.endpoint,
+                &uri_path,
+                &self.region,
+                &self.access_key,
+                &self.secret_key,
+                &data,
+            );
             let res = self
                 .client
                 .put(&url)
                 .header(reqwest::header::CONTENT_TYPE, content_type)
-                .header("x-amz-access-key", &self.access_key)
+                .header("x-amz-date", sig.amz_date)
+                .header("x-amz-content-sha256", sig.payload_sha256)
+                .header(reqwest::header::AUTHORIZATION, sig.authorization)
                 .body(data)
                 .send()
                 .await
@@ -286,11 +377,22 @@ impl BlobStorePort for S3BlobStore {
 
     fn get_blob<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Result<Vec<u8>, ServerError>> {
         Box::pin(async move {
-            let url = self.object_url(key)?;
+            let (uri_path, url) = self.object_path_and_url(key)?;
+            let sig = super::s3_sigv4::sign_request(
+                "GET",
+                &self.endpoint,
+                &uri_path,
+                &self.region,
+                &self.access_key,
+                &self.secret_key,
+                b"",
+            );
             let res = self
                 .client
                 .get(&url)
-                .header("x-amz-access-key", &self.access_key)
+                .header("x-amz-date", sig.amz_date)
+                .header("x-amz-content-sha256", sig.payload_sha256)
+                .header(reqwest::header::AUTHORIZATION, sig.authorization)
                 .send()
                 .await
                 .map_err(|e| ServerError::Internal(format!("s3 blob get network: {e}")))?;
@@ -311,11 +413,22 @@ impl BlobStorePort for S3BlobStore {
 
     fn delete_blob<'a>(&'a self, key: &'a str) -> BoxFuture<'a, Result<(), ServerError>> {
         Box::pin(async move {
-            let url = self.object_url(key)?;
+            let (uri_path, url) = self.object_path_and_url(key)?;
+            let sig = super::s3_sigv4::sign_request(
+                "DELETE",
+                &self.endpoint,
+                &uri_path,
+                &self.region,
+                &self.access_key,
+                &self.secret_key,
+                b"",
+            );
             let res = self
                 .client
                 .delete(&url)
-                .header("x-amz-access-key", &self.access_key)
+                .header("x-amz-date", sig.amz_date)
+                .header("x-amz-content-sha256", sig.payload_sha256)
+                .header(reqwest::header::AUTHORIZATION, sig.authorization)
                 .send()
                 .await
                 .map_err(|e| ServerError::Internal(format!("s3 blob delete network: {e}")))?;
@@ -336,15 +449,15 @@ impl BlobStorePort for S3BlobStore {
         expires_secs: u64,
     ) -> BoxFuture<'a, Result<String, ServerError>> {
         Box::pin(async move {
-            let url = self.object_url(key)?;
-            let exp = crate::infra::state::now_ms() / 1000 + expires_secs;
-            let sig = crate::modules::auth::services::compute_hmac_hex(
-                self.secret_key.as_bytes(),
-                format!("{url}:{exp}").as_bytes(),
-            );
-            Ok(format!(
-                "{url}?X-Amz-Credential={}&X-Amz-Expires={expires_secs}&X-Amz-Signature={sig}",
-                self.access_key
+            let _ = self.object_path_and_url(key)?;
+            Ok(super::s3_sigv4::presign_get_url(
+                &self.endpoint,
+                &self.bucket,
+                key,
+                &self.region,
+                &self.access_key,
+                &self.secret_key,
+                expires_secs,
             ))
         })
     }

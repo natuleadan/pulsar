@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::infra::{
     adapters::{
-        blob::{BlobStorePort, LocalFsBlobStore, UpstashBlobStore},
+        blob::{BlobStorePort, LocalFsBlobStore, S3BlobStore, UpstashBlobStore},
         qstash::QstashMessageBus,
         vector::{InMemoryVectorStore, UpstashVectorAdapter, VectorStorePort},
     },
@@ -83,7 +83,23 @@ impl InfrastructureRegistry {
             Arc::new(InMemoryVectorStore::new())
         };
 
-        let blob: Arc<dyn BlobStorePort> = if let Some(token) = &config.upstash_blob_token {
+        let blob: Arc<dyn BlobStorePort> = if let (Some(endpoint), Some(ak), Some(sk)) = (
+            &config.s3_endpoint,
+            &config.s3_access_key,
+            &config.s3_secret_key,
+        ) {
+            let store = S3BlobStore::with_region(
+                endpoint.clone(),
+                config.s3_bucket.clone(),
+                config.s3_region.clone(),
+                ak.clone(),
+                sk.clone(),
+            );
+            if let Err(err) = store.ensure_bucket().await {
+                tracing::warn!(error = %err, bucket = %config.s3_bucket, "s3 bucket ensure failed on startup");
+            }
+            Arc::new(store)
+        } else if let Some(token) = &config.upstash_blob_token {
             Arc::new(UpstashBlobStore::new(token.clone()))
         } else {
             Arc::new(LocalFsBlobStore::new(std::path::PathBuf::from(

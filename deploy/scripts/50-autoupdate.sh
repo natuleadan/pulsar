@@ -63,6 +63,10 @@ if [[ "${DRY_RUN}" != "1" && "$(id -u)" -ne 0 && "${CHECK_ONLY}" != "1" ]]; then
 fi
 
 if [[ "${INSTALL_TIMER}" == "1" ]]; then
+  if [[ "${DRY_RUN}" == "1" ]]; then
+    echo "[DRY-RUN] install ${BIN_DIR}/agents-autoupdate and enable systemd agents-autoupdate.timer"
+    exit 0
+  fi
   echo "[INFO] Installing systemd autoupdate timer..."
   install -d -m 0755 "${BIN_DIR}"
   if [[ "$(readlink -f "${BASH_SOURCE[0]}")" != "$(readlink -f "${BIN_DIR}/agents-autoupdate" 2>/dev/null || true)" ]]; then

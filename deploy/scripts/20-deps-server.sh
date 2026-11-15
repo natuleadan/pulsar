@@ -236,3 +236,61 @@ EOF
 fi
 
 echo "[PASS] Server dependencies configured (domain=${DOMAIN}, bare_ip=${IS_BARE_IP}, preview_domain=${PREVIEW_DOMAIN}, vlan=${VLAN_CIDR})"
+
+if [[ "${DRY_RUN}" != "1" ]]; then
+  ARCH="$(uname -m)"
+  case "${ARCH}" in
+    x86_64|amd64) GO_ARCH="amd64" ;;
+    aarch64|arm64) GO_ARCH="arm64" ;;
+    *) GO_ARCH="amd64" ;;
+  esac
+
+  if ! command -v nats-server >/dev/null 2>&1; then
+    NATS_VER="v2.11.1"
+    curl -fsSL "https://github.com/nats-io/nats-server/releases/download/${NATS_VER}/nats-server-${NATS_VER}-linux-${GO_ARCH}.tar.gz" -o /tmp/nats-server.tgz
+    tar -xzf /tmp/nats-server.tgz -C /tmp
+    install -m 0755 "/tmp/nats-server-${NATS_VER}-linux-${GO_ARCH}/nats-server" /usr/local/bin/nats-server
+    rm -rf /tmp/nats-server.tgz "/tmp/nats-server-${NATS_VER}-linux-${GO_ARCH}"
+  fi
+
+  if ! command -v traefik >/dev/null 2>&1; then
+    TRAEFIK_VER="v3.3.4"
+    curl -fsSL "https://github.com/traefik/traefik/releases/download/${TRAEFIK_VER}/traefik_${TRAEFIK_VER}_linux_${GO_ARCH}.tar.gz" -o /tmp/traefik.tgz
+    tar -xzf /tmp/traefik.tgz -C /tmp traefik
+    install -m 0755 /tmp/traefik /usr/local/bin/traefik
+    rm -f /tmp/traefik.tgz /tmp/traefik
+  fi
+
+  if [[ -r "${ENV_FILE}" ]]; then
+    VALKEY_URL_VAL="$(awk -F= '/^VALKEY_URL=/{print substr($0, index($0,$2)); exit}' "${ENV_FILE}")"
+    if [[ "${VALKEY_URL_VAL}" =~ ://[^:]*:([^@]+)@ ]]; then
+      VALKEY_PASS="${BASH_REMATCH[1]}"
+      for cfg in /etc/valkey/valkey.conf /etc/redis/redis.conf; do
+        if [[ -f "${cfg}" ]]; then
+          sed -i '/^requirepass /d' "${cfg}"
+          echo "requirepass ${VALKEY_PASS}" >>"${cfg}"
+        fi
+      done
+    fi
+  fi
+
+  if command -v docker >/dev/null 2>&1; then
+    mkdir -p /var/lib/rustfs
+    S3_ACCESS="${AGENTS_S3_ACCESS_KEY:-rustfsadmin}"
+    S3_SECRET="${AGENTS_S3_SECRET_KEY:-rustfsadmin}"
+    if [[ -r "${ENV_FILE}" ]]; then
+      ENV_ACCESS="$(awk -F= '/^S3_ACCESS_KEY=/{print substr($0, index($0,$2)); exit}' "${ENV_FILE}")"
+      ENV_SECRET="$(awk -F= '/^S3_SECRET_KEY=/{print substr($0, index($0,$2)); exit}' "${ENV_FILE}")"
+      [[ -n "${ENV_ACCESS}" ]] && S3_ACCESS="${ENV_ACCESS}"
+      [[ -n "${ENV_SECRET}" ]] && S3_SECRET="${ENV_SECRET}"
+    fi
+    docker rm -f agents-rustfs >/dev/null 2>&1 || true
+    docker run -d --name agents-rustfs --restart unless-stopped \
+      -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 \
+      -e "RUSTFS_ACCESS_KEY=${S3_ACCESS}" \
+      -e "RUSTFS_SECRET_KEY=${S3_SECRET}" \
+      -v /var/lib/rustfs:/data \
+      rustfs/rustfs:latest >/dev/null
+    echo "[INFO] Started agents-rustfs S3 service on 127.0.0.1:9000"
+  fi
+fi

@@ -32,14 +32,21 @@ impl Default for ApmConfig {
 }
 
 impl ApmConfig {
-    /// Loads APM configuration from environment variables (`AGENTS_OTEL_ENDPOINT` / `OTLP_ENDPOINT`).
+    /// Loads APM configuration from environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT` / `AGENTS_OTEL_ENDPOINT` / `OTLP_ENDPOINT`).
     #[must_use]
     pub fn from_env() -> Self {
-        let endpoint = std::env::var("AGENTS_OTEL_ENDPOINT")
+        let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+            .or_else(|_| std::env::var("AGENTS_OTEL_ENDPOINT"))
             .or_else(|_| std::env::var("OTLP_ENDPOINT"))
             .ok()
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty());
+
+        let service_name = std::env::var("OTEL_SERVICE_NAME")
+            .ok()
+            .map(|s| s.trim().to_owned())
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| "agents-server".to_owned());
 
         let sample_rate = std::env::var("AGENTS_OTEL_SAMPLE_RATE")
             .or_else(|_| std::env::var("SAMPLE_RATE"))
@@ -54,7 +61,7 @@ impl ApmConfig {
             .unwrap_or(2000);
 
         Self {
-            service_name: "agents-server".to_owned(),
+            service_name,
             otlp_endpoint: endpoint,
             sample_rate,
             batch_interval_ms,

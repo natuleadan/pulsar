@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc,
-        atomic::{AtomicU64, Ordering},
+        atomic::{AtomicU32, AtomicU64, Ordering},
     },
 };
 
@@ -34,6 +34,7 @@ struct ActiveBox {
     profile: SandboxProfile,
     driver: Arc<dyn SandboxDriver>,
     created_at: u64,
+    active_execs: Arc<AtomicU32>,
 }
 
 /// Operational counters tracked across Boxer execution lifecycle.
@@ -50,17 +51,32 @@ pub struct BoxerControlPlaneService {
     config: Arc<BoxerConfig>,
     boxes: Arc<RwLock<HashMap<String, ActiveBox>>>,
     metrics: Arc<BoxerMetricsSnapshot>,
+    proxy_url: Option<String>,
 }
 
 impl BoxerControlPlaneService {
     /// Constructs a new [`BoxerControlPlaneService`].
     #[must_use]
     pub fn new(config: Arc<BoxerConfig>) -> Self {
+        let proxy_url = std::env::var("AGENTS_PROXY_URL")
+            .ok()
+            .map(|s| s.trim().to_owned())
+            .filter(|s| !s.is_empty());
         Self {
             config,
             boxes: Arc::new(RwLock::new(HashMap::new())),
             metrics: Arc::new(BoxerMetricsSnapshot::default()),
+            proxy_url,
         }
+    }
+
+    /// Attaches an explicit outbound credential proxy URL to control-plane `exec` requests.
+    #[must_use]
+    pub fn with_proxy_url(mut self, proxy_url: Option<String>) -> Self {
+        if proxy_url.is_some() {
+            self.proxy_url = proxy_url;
+        }
+        self
     }
 
     /// Records an authorization failure event.
@@ -99,6 +115,7 @@ impl BoxerControlPlaneService {
             profile,
             driver,
             created_at: now,
+            active_execs: Arc::new(AtomicU32::new(0)),
         };
 
         tracing::info!(
@@ -133,6 +150,8 @@ impl BoxerControlPlaneService {
             .get(box_id)
             .ok_or_else(|| BoxerError::ExecutionFailed(format!("box `{box_id}` not found")))?;
 
+        let active_execs = Arc::clone(&active.active_execs);
+        let driver = Arc::clone(&active.driver);
         let timeout_secs = req.timeout_ms.map(|ms| (ms / 1000).max(1)).unwrap_or(30);
         let exec_req = SandboxExecRequest {
             task_id: active.task_id.clone(),
@@ -147,12 +166,16 @@ impl BoxerControlPlaneService {
                 env_allowlist: Vec::new(),
                 network_egress: true,
             },
-            proxy_url: None,
+            proxy_url: self.proxy_url.clone(),
         };
+        drop(boxes);
 
+        active_execs.fetch_add(1, Ordering::Relaxed);
         let (_cancel_tx, cancel_rx) = watch::channel(false);
         let start = now_ms();
-        let outcome = active.driver.execute(exec_req, None, cancel_rx).await?;
+        let outcome_res = driver.execute(exec_req, None, cancel_rx).await;
+        active_execs.fetch_sub(1, Ordering::Relaxed);
+        let outcome = outcome_res?;
         let duration_ms = now_ms().saturating_sub(start);
         self.metrics.execs_total.fetch_add(1, Ordering::Relaxed);
         tracing::info!(
@@ -182,11 +205,13 @@ impl BoxerControlPlaneService {
             .ok_or_else(|| BoxerError::ExecutionFailed(format!("box `{box_id}` not found")))?;
 
         let uptime_secs = now_ms().saturating_sub(active.created_at) / 1000;
+        let active_tasks = active.active_execs.load(Ordering::Relaxed);
+        let memory_bytes = read_process_rss_bytes();
         Ok(BoxStatusResponse {
             box_id: box_id.to_owned(),
             status: "active".into(),
-            memory_bytes: 64 * 1024 * 1024,
-            active_tasks: 1,
+            memory_bytes,
+            active_tasks,
             uptime_secs,
         })
     }
@@ -308,4 +333,11 @@ fn sanitize_vfs_path(base: &Path, rel: &str) -> Result<PathBuf, BoxerError> {
     }
     let target = base.join(clean);
     Ok(target)
+}
+
+fn read_process_rss_bytes() -> u64 {
+    std::fs::read_to_string("/proc/self/statm")
+        .ok()
+        .and_then(|s| s.split_whitespace().nth(1)?.parse::<u64>().ok())
+        .map_or(0, |pages| pages.saturating_mul(4096))
 }

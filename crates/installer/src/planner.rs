@@ -43,6 +43,11 @@ impl ExecutionPlan {
                 "20-deps-server.sh",
                 deps_server_args(spec),
             )?);
+            steps.push(resolve_step(
+                spec,
+                "25-setup-observability.sh",
+                observability_args(spec),
+            )?);
         }
 
         if spec.mode.includes_boxer() {
@@ -58,7 +63,13 @@ impl ExecutionPlan {
             "40-systemd-units.sh",
             systemd_args(spec),
         )?);
+        steps.push(resolve_step(
+            spec,
+            "50-autoupdate.sh",
+            autoupdate_args(spec),
+        )?);
         steps.push(resolve_step(spec, "90-doctor.sh", doctor_args(spec))?);
+        steps.push(resolve_step(spec, "95-validate-metrics.sh", Vec::new())?);
 
         Ok(Self {
             mode: spec.mode,
@@ -240,4 +251,20 @@ fn doctor_args(spec: &TopologySpec) -> Vec<String> {
         spec.env_file_path.display().to_string(),
         "--non-destructive".to_owned(),
     ]
+}
+
+fn observability_args(spec: &TopologySpec) -> Vec<String> {
+    let mut args = vec!["--enable-otel".to_owned(), "1".to_owned()];
+    if spec.dry_run {
+        args.push("--dry-run".to_owned());
+    }
+    args
+}
+
+fn autoupdate_args(spec: &TopologySpec) -> Vec<String> {
+    let mut args = vec!["--check".to_owned(), "--install-timer".to_owned()];
+    if spec.dry_run {
+        args.push("--dry-run".to_owned());
+    }
+    args
 }

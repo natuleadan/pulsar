@@ -50,6 +50,25 @@ impl NatsBoxerBus {
     pub fn nats_client(&self) -> &async_nats::Client {
         &self.client
     }
+
+    /// Publishes an HMAC-signed P2P swarm message to `swarm.<session>.p2p.<agent_id>`.
+    pub async fn publish_swarm_p2p(
+        &self,
+        secret: &[u8],
+        msg: &agents_protocol::SwarmMessage,
+        target_agent_id: &str,
+    ) -> Result<(), BoxerError> {
+        let mut signed = msg.clone();
+        signed.signature = crate::swarm::compute_swarm_signature(secret, &signed);
+        let subject = crate::swarm::swarm_p2p_subject(&signed.session_id, target_agent_id);
+        let payload = serde_json::to_vec(&signed)
+            .map_err(|err| BoxerError::Bus(format!("serialize swarm p2p failed: {err}")))?;
+        self.client
+            .publish(subject, payload.into())
+            .await
+            .map_err(|err| BoxerError::Bus(format!("nats swarm p2p publish failed: {err}")))?;
+        Ok(())
+    }
 }
 
 impl BoxerBus for NatsBoxerBus {

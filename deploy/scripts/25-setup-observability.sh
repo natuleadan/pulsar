@@ -85,12 +85,46 @@ if [[ -f "${ENV_FILE}" ]]; then
   if [[ "${ENABLE_OTEL}" == "1" ]]; then
     sed -i '/^AGENTS_OTEL_ENDPOINT=/d' "${ENV_FILE}"
     sed -i '/^OTLP_ENDPOINT=/d' "${ENV_FILE}"
+    sed -i '/^OTEL_EXPORTER_OTLP_ENDPOINT=/d' "${ENV_FILE}"
     echo "AGENTS_OTEL_ENDPOINT=${OTEL_ENDPOINT}" >>"${ENV_FILE}"
     echo "OTLP_ENDPOINT=${OTEL_ENDPOINT}" >>"${ENV_FILE}"
+    echo "OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_ENDPOINT}" >>"${ENV_FILE}"
     echo "[INFO] Configured OTLP endpoint: ${OTEL_ENDPOINT}"
+
+    if command -v docker >/dev/null 2>&1; then
+      OTEL_CFG="/etc/agents/otel-collector-config.yaml"
+      mkdir -p "$(dirname "${OTEL_CFG}")"
+      cat >"${OTEL_CFG}" <<'OTEL_EOF'
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  batch: {}
+exporters:
+  debug:
+    verbosity: basic
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [debug]
+OTEL_EOF
+      docker rm -f agents-otel-collector >/dev/null 2>&1 || true
+      docker run -d --name agents-otel-collector --restart unless-stopped \
+        -p 127.0.0.1:4317:4317 -p 127.0.0.1:4318:4318 \
+        -v "${OTEL_CFG}:/etc/otelcol-contrib/config.yaml:ro" \
+        otel/opentelemetry-collector-contrib:0.120.0 >/dev/null
+      echo "[INFO] Started agents-otel-collector container on 127.0.0.1:4317 (gRPC) / 4318 (HTTP)"
+    fi
   else
     sed -i '/^AGENTS_OTEL_ENDPOINT=/d' "${ENV_FILE}"
     sed -i '/^OTLP_ENDPOINT=/d' "${ENV_FILE}"
+    sed -i '/^OTEL_EXPORTER_OTLP_ENDPOINT=/d' "${ENV_FILE}"
     echo "[INFO] OTEL export disabled (local Prometheus /metrics + JSONL active)"
   fi
 fi

@@ -43,6 +43,7 @@ use crate::{
             A2aModule,
             repositories::{A2aTaskStore, InMemoryA2aRepository, PgA2aRepository},
         },
+        artifacts::ArtifactsModule,
         audit::{
             AuditModule,
             repositories::{AuditStore, InMemoryAuditRepository, PgAuditRepository},
@@ -157,6 +158,7 @@ impl Module for InfraModule {
     NodesModule,
     SessionsModule,
     TasksModule,
+    ArtifactsModule,
     SwarmModule,
     WorkflowsModule,
     AutocronModule,
