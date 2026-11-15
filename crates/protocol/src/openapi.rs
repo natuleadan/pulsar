@@ -4,11 +4,11 @@ use ironic::OpenApiSchema;
 use serde_json::{Value, json};
 
 use crate::{
-    ApiKeyMetadata, ApiKeyScope, BoxerNodeAnnouncement, CursorPage, EventEnvelope, ExecOptions,
-    FencingToken, FollowUpMessage, InteractionMode, IsolationKind, NodeStatus, PermissionMask,
-    RuntimeKind, SandboxProfile, SetupMode, SteeringMessage, StopReason, TaskLease, TaskResult,
-    TaskState, TokenPair, TraefikPreviewRoute, TriggerKind, WorkflowDag, WorkflowEdge,
-    WorkflowNode,
+    AgentLifecycleMode, AgentLifecyclePolicy, ApiKeyMetadata, ApiKeyScope, BoxerNodeAnnouncement,
+    CursorPage, EventEnvelope, ExecOptions, FencingToken, FollowUpMessage, InteractionMode,
+    IsolationKind, NodeStatus, PermissionMask, RuntimeKind, SandboxProfile, SetupMode,
+    SteeringMessage, StopReason, TaskLease, TaskResult, TaskState, TokenPair, TraefikPreviewRoute,
+    TriggerKind, WorkflowDag, WorkflowEdge, WorkflowNode,
 };
 
 impl OpenApiSchema for ApiKeyScope {
@@ -389,6 +389,37 @@ impl OpenApiSchema for WorkflowDag {
                 "renderSlug": { "type": "string", "nullable": true, "example": "view-analysis" },
                 "approved": { "type": "boolean", "nullable": true, "example": true },
                 "createdByAgent": { "type": "boolean", "nullable": true, "example": false }
+            }
+        })
+    }
+}
+
+impl OpenApiSchema for AgentLifecycleMode {
+    fn openapi_schema() -> Value {
+        json!({
+            "type": "string",
+            "title": "AgentLifecycleMode",
+            "enum": ["ephemeral", "timed", "permanent"],
+            "example": "ephemeral"
+        })
+    }
+}
+
+impl OpenApiSchema for AgentLifecyclePolicy {
+    fn openapi_schema() -> Value {
+        json!({
+            "type": "object",
+            "title": "AgentLifecyclePolicy",
+            "properties": {
+                "mode": {
+                    "type": "string",
+                    "enum": ["ephemeral", "timed", "permanent"],
+                    "example": "ephemeral"
+                },
+                "ttlSecs": {
+                    "type": "integer",
+                    "example": 3600
+                }
             }
         })
     }

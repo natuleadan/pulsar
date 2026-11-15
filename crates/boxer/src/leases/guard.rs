@@ -66,6 +66,7 @@ pub struct SandboxResources {
     pub container_name: Option<String>,
     pub preview_route_file: Option<std::path::PathBuf>,
     pub cleaned: Arc<AtomicBool>,
+    pub lifecycle: agents_protocol::AgentLifecyclePolicy,
 }
 
 impl SandboxResources {
@@ -77,13 +78,29 @@ impl SandboxResources {
             container_name: None,
             preview_route_file: None,
             cleaned: Arc::new(AtomicBool::new(false)),
+            lifecycle: agents_protocol::AgentLifecyclePolicy::default(),
         }
+    }
+
+    #[must_use]
+    pub fn with_lifecycle(mut self, lifecycle: agents_protocol::AgentLifecyclePolicy) -> Self {
+        self.lifecycle = lifecycle;
+        self
     }
 
     /// Executes deterministic idempotent teardown of process groups, Docker containers,
     /// and ephemeral Traefik preview files.
     pub fn cleanup_sync(&self) {
         if self.cleaned.swap(true, Ordering::SeqCst) {
+            return;
+        }
+
+        if self.lifecycle.is_permanent() {
+            tracing::info!(
+                task_id = %self.task_id,
+                container = ?self.container_name,
+                "sandbox lifecycle is permanent (keepAlive); keeping container warm"
+            );
             return;
         }
 

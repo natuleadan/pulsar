@@ -1,7 +1,8 @@
 //! Validated DTOs for task submission, fencing leases, steering, and completion.
 
 use agents_protocol::{
-    ExecOptions, FencingToken, InteractionMode, SandboxProfile, StopReason, TaskState,
+    AgentLifecyclePolicy, ExecOptions, FencingToken, InteractionMode, SandboxProfile, StopReason,
+    TaskState,
 };
 use garde::Validate;
 use ironic::OpenApiSchema;
@@ -21,6 +22,8 @@ pub struct SubmitTaskDto {
     pub sandbox: Option<SandboxProfile>,
     #[garde(skip)]
     pub exec: Option<ExecOptions>,
+    #[garde(skip)]
+    pub lifecycle: Option<AgentLifecyclePolicy>,
 }
 
 /// Request from a Boxer worker node to acquire a fenced task lease.

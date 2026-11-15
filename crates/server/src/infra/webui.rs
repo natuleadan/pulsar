@@ -93,9 +93,69 @@ pub fn mount_native_stream_and_mcp_routes(
                 )
             }),
         )
+        .layer(axum::middleware::from_fn(metrics_security_middleware))
         .layer(ironic::metrics::MetricsLayer::new(
             ironic::metrics::MetricsConfig::default(),
         ))
+}
+
+async fn metrics_security_middleware(
+    req: AxumRequest<Body>,
+    next: axum::middleware::Next,
+) -> Response {
+    let path = req.uri().path();
+    if path == "/metrics" || path == "/metrics/prometheus" {
+        let headers = req.headers();
+        let has_forwarded = headers.contains_key("x-forwarded-for")
+            || headers.contains_key("x-forwarded-host")
+            || headers.contains_key("cf-connecting-ip");
+
+        let is_prod = std::env::var("AGENTS_ENV").unwrap_or_default() == "production";
+
+        let token = headers
+            .get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| {
+                v.strip_prefix("Bearer ")
+                    .or_else(|| v.strip_prefix("bearer "))
+            })
+            .map(str::trim);
+
+        let api_key = headers
+            .get("x-api-key")
+            .and_then(|v| v.to_str().ok())
+            .map(str::trim);
+
+        let metrics_token = std::env::var("AGENTS_METRICS_TOKEN").ok();
+
+        let is_authed = if let Some(t) = token {
+            if let Some(ref m_tok) = metrics_token {
+                t == m_tok
+            } else {
+                !t.is_empty()
+            }
+        } else if let Some(k) = api_key {
+            !k.is_empty()
+        } else {
+            false
+        };
+
+        if (has_forwarded || is_prod) && !is_authed {
+            tracing::warn!(
+                target: "agents.security.metrics",
+                path,
+                "unauthorized metrics scrape attempt rejected (401)"
+            );
+            return (
+                StatusCode::UNAUTHORIZED,
+                [(header::CONTENT_TYPE, "application/json")],
+                r#"{"error":"AUTH_UNAUTHORIZED","message":"Metrics endpoint requires admin credentials or scraper token"}"#,
+            )
+                .into_response();
+        }
+    }
+
+    next.run(req).await
 }
 
 async fn dispatch_lazy_mcp(req: AxumRequest<Body>, cell: Arc<OnceLock<McpHttpState>>) -> Response {

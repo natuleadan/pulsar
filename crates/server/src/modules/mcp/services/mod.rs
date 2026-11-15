@@ -251,6 +251,7 @@ impl McpHostService {
                                 mode: None,
                                 sandbox: None,
                                 exec: None,
+                                lifecycle: None,
                             },
                         )
                         .await

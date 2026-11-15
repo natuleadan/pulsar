@@ -202,6 +202,62 @@ impl std::fmt::Debug for ProxyCredentialSpec {
     }
 }
 
+/// Lifecycle mode of an agent execution sandbox.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AgentLifecycleMode {
+    #[default]
+    Ephemeral,
+    Timed,
+    Permanent,
+}
+
+/// Execution lifecycle policy for sandboxes and local agents (matching Upstash Box capabilities).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentLifecyclePolicy {
+    #[serde(default)]
+    pub mode: AgentLifecycleMode,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ttl_secs: Option<u64>,
+}
+
+impl AgentLifecyclePolicy {
+    #[must_use]
+    pub const fn ephemeral() -> Self {
+        Self {
+            mode: AgentLifecycleMode::Ephemeral,
+            ttl_secs: None,
+        }
+    }
+
+    #[must_use]
+    pub const fn timed(ttl_secs: u64) -> Self {
+        Self {
+            mode: AgentLifecycleMode::Timed,
+            ttl_secs: Some(ttl_secs),
+        }
+    }
+
+    #[must_use]
+    pub const fn permanent() -> Self {
+        Self {
+            mode: AgentLifecycleMode::Permanent,
+            ttl_secs: None,
+        }
+    }
+
+    #[must_use]
+    pub const fn is_permanent(&self) -> bool {
+        matches!(self.mode, AgentLifecycleMode::Permanent)
+    }
+
+    #[must_use]
+    pub const fn is_ephemeral(&self) -> bool {
+        matches!(self.mode, AgentLifecycleMode::Ephemeral)
+    }
+}
+
 /// Task request dispatched from Server to Boxer via NATS JetStream.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -225,6 +281,8 @@ pub struct TaskRequest {
     pub inference: Option<InferenceEndpointSpec>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub proxy_credentials: Vec<ProxyCredentialSpec>,
+    #[serde(default, skip_serializing_if = "AgentLifecyclePolicy::is_ephemeral")]
+    pub lifecycle: AgentLifecyclePolicy,
 }
 
 /// Active lease granted to a Boxer worker for executing a task.

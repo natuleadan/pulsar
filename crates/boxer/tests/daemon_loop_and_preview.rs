@@ -19,9 +19,9 @@ use agents_boxer::{
     preview::{PreviewPublishRequest, TraefikFileProvider},
 };
 use agents_protocol::{
-    ExecOptions, FollowUpMessage, InteractionMode, IsolationKind, PermissionMask, RuntimeKind,
-    SandboxProfile, SetupMode, SteeringMessage, StopReason, StreamPayload, TaskRequest, TaskState,
-    ToolPhase, TurnDecision, WorkerStatus,
+    AgentLifecyclePolicy, ExecOptions, FollowUpMessage, InteractionMode, IsolationKind,
+    PermissionMask, RuntimeKind, SandboxProfile, SetupMode, SteeringMessage, StopReason,
+    StreamPayload, TaskRequest, TaskState, ToolPhase, TurnDecision, WorkerStatus,
 };
 use clap::Parser;
 use serde_json::Value;
@@ -430,6 +430,7 @@ async fn boxer_daemon_executes_hermetic_task_emits_telemetry_and_completes_fence
                 exec: ExecOptions::default(),
                 inference: None,
                 proxy_credentials: Vec::new(),
+                lifecycle: AgentLifecyclePolicy::default(),
             },
             None,
         )

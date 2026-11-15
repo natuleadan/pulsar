@@ -166,6 +166,7 @@ impl TaskService {
             exec: dto.exec.clone().unwrap_or_default(),
             inference,
             proxy_credentials,
+            lifecycle: dto.lifecycle.unwrap_or_default(),
         };
         self.bus.0.publish_task_request(&nats_req).await?;
 

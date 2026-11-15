@@ -64,6 +64,7 @@ pub fn spawn_inbound_dispatcher(
                     timeout_seconds: Some(120),
                     inference: None,
                     proxy_credentials: Vec::new(),
+                    lifecycle: Default::default(),
                 };
                 let _ = message_bus.publish_task_request(&req).await;
             }

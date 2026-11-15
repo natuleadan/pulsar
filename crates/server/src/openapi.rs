@@ -1,14 +1,18 @@
 //! Centralized OpenAPI 3.1 configuration and component schema registry.
 
 use agents_protocol::{
-    ApiKeyMetadata, ApiKeyScope, BoxerNodeAnnouncement, EventEnvelope, ExecOptions, FencingToken,
-    FollowUpMessage, InteractionMode, IsolationKind, NodeStatus, PermissionMask, RuntimeKind,
-    SandboxProfile, SetupMode, SteeringMessage, StopReason, TaskLease, TaskResult, TaskState,
-    TokenPair, TraefikPreviewRoute, TriggerKind, WorkflowDag, WorkflowEdge, WorkflowNode,
+    AgentLifecycleMode, AgentLifecyclePolicy, ApiKeyMetadata, ApiKeyScope, BoxerNodeAnnouncement,
+    EventEnvelope, ExecOptions, FencingToken, FollowUpMessage, InteractionMode, IsolationKind,
+    NodeStatus, PermissionMask, RuntimeKind, SandboxProfile, SetupMode, SteeringMessage,
+    StopReason, TaskLease, TaskResult, TaskState, TokenPair, TraefikPreviewRoute, TriggerKind,
+    WorkflowDag, WorkflowEdge, WorkflowNode,
 };
 use ironic::{OpenApiConfig, SecurityScheme};
 
 use crate::modules::{
+    artifacts::dto::{
+        ArtifactListResponse, ArtifactRecord, PresignedArtifactResponse, UploadArtifactDto,
+    },
     audit::{
         dto::{AuditQueryDto, AuditVerificationReport},
         entities::AuditLogRecord,
@@ -25,10 +29,19 @@ use crate::modules::{
         entities::{AutocronRecoveryReport, AutocronScheduleEntity, AutocronTickOutcome},
     },
     gateway::dto::StreamReplayQuery,
+    identity::entities::{InstallationIdentityRecord, UpdateInstallationIdentityDto},
     mcp::dto::McpPolicyInfo,
     nodes::{
         dto::{NodeHeartbeatDto, NodeRegistrationDto, NodeRegistrationResponse, PreviewSyncDto},
         entities::{NodeListResponse, PreviewSyncAck},
+    },
+    providers::{
+        dto::UpsertProviderDto,
+        entities::{InferenceProviderEntity, ProviderActionResponse},
+    },
+    secrets::{
+        dto::{AddGroupMemberDto, CreateSecretGroupDto, UpsertSecretDto},
+        entities::{SecretActionResponse, SecretGroupEntity, SecretMetadataEntity},
     },
     sessions::{
         dto::{CreateSessionDto, ListSessionsQuery, SaveDraftDto, UpdateSessionDto},
@@ -170,6 +183,28 @@ pub fn configure_openapi() -> OpenApiConfig {
         .schema::<SystemVersionResponse>("SystemVersionResponse")
         .schema::<MetricsScrapeResponse>("MetricsScrapeResponse")
         .schema::<PaginatedPageResponse>("PaginatedPageResponse")
+        // Lifecycle schemas
+        .schema::<AgentLifecycleMode>("AgentLifecycleMode")
+        .schema::<AgentLifecyclePolicy>("AgentLifecyclePolicy")
+        // Provider schemas
+        .schema::<UpsertProviderDto>("UpsertProviderDto")
+        .schema::<InferenceProviderEntity>("InferenceProviderEntity")
+        .schema::<ProviderActionResponse>("ProviderActionResponse")
+        // Secret schemas
+        .schema::<UpsertSecretDto>("UpsertSecretDto")
+        .schema::<CreateSecretGroupDto>("CreateSecretGroupDto")
+        .schema::<AddGroupMemberDto>("AddGroupMemberDto")
+        .schema::<SecretMetadataEntity>("SecretMetadataEntity")
+        .schema::<SecretGroupEntity>("SecretGroupEntity")
+        .schema::<SecretActionResponse>("SecretActionResponse")
+        // Artifact schemas
+        .schema::<UploadArtifactDto>("UploadArtifactDto")
+        .schema::<ArtifactRecord>("ArtifactRecord")
+        .schema::<ArtifactListResponse>("ArtifactListResponse")
+        .schema::<PresignedArtifactResponse>("PresignedArtifactResponse")
+        // Identity schemas
+        .schema::<InstallationIdentityRecord>("InstallationIdentityRecord")
+        .schema::<UpdateInstallationIdentityDto>("UpdateInstallationIdentityDto")
         .schema::<crate::infra::observability::SystemLogsResponse>("SystemLogsResponse")
         // Identity & A2A schemas
         .schema::<crate::modules::identity::entities::InstallationIdentityRecord>(
@@ -396,7 +431,14 @@ pub fn enrich_openapi_spec(spec: &mut serde_json::Value) {
         get_op.insert("summary".into(), serde_json::json!("Prometheus metrics"));
         get_op.insert(
             "description".into(),
-            serde_json::json!("Returns framework, domain, and runtime Prometheus metrics."),
+            serde_json::json!("Returns framework, domain, and runtime Prometheus metrics. Restricted to admin operators or local loopback/scraper token."),
+        );
+        get_op.insert(
+            "security".into(),
+            serde_json::json!([
+                { "bearerAuth": [] },
+                { "apiKeyAuth": [] }
+            ]),
         );
         get_op.insert(
             "responses".into(),
@@ -404,6 +446,10 @@ pub fn enrich_openapi_spec(spec: &mut serde_json::Value) {
                 "200": {
                     "description": "Scraped Prometheus metrics payload",
                     "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MetricsScrapeResponse" } } }
+                },
+                "401": {
+                    "description": "Unauthorized: Admin credentials or scraper token required",
+                    "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } }
                 }
             }),
         );

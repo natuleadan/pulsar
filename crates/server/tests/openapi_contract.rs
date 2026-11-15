@@ -166,6 +166,14 @@ async fn openapi_spec_is_enriched_and_scalar_ui_renders_completely() {
         "McpPolicyInfo",
         "StreamReplayQuery",
         "EventEnvelope",
+        "UpsertProviderDto",
+        "InferenceProviderEntity",
+        "UpsertSecretDto",
+        "SecretMetadataEntity",
+        "UploadArtifactDto",
+        "PresignedArtifactResponse",
+        "InstallationIdentityRecord",
+        "AgentLifecyclePolicy",
     ];
 
     for name in required_schemas {
