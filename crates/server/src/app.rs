@@ -420,10 +420,8 @@ pub async fn build_application(
                 .request_body_limit(4 * 1024 * 1024)
                 .request_timeout(Duration::from_secs(120))
                 .drain_timeout(Duration::from_secs(30))
-                .configure_router(move |router| {
-                    mount_native_stream_and_mcp_routes(
-                        router, gw_cell, mcp_cell, nodes_cell, doc_cell,
-                    )
+                .configure_router(move |r| {
+                    mount_native_stream_and_mcp_routes(r, gw_cell, mcp_cell, nodes_cell, doc_cell)
                 })
                 .with_openapi(openapi_config),
         )
