@@ -276,6 +276,7 @@ if [[ "${DRY_RUN}" != "1" ]]; then
 
   if command -v docker >/dev/null 2>&1; then
     mkdir -p /var/lib/rustfs
+    chown -R 10001:10001 /var/lib/rustfs
     S3_ACCESS="${AGENTS_S3_ACCESS_KEY:-rustfsadmin}"
     S3_SECRET="${AGENTS_S3_SECRET_KEY:-rustfsadmin}"
     if [[ -r "${ENV_FILE}" ]]; then
