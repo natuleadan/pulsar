@@ -250,10 +250,12 @@ pub struct LivenessResponse {
 /// System build and runtime version metadata.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, ironic::OpenApiSchema)]
 pub struct SystemVersionResponse {
+    /// Service identifier.
+    pub service: String,
     /// Semantic release version.
     pub version: String,
-    /// Git commit revision hash.
-    pub git_sha: String,
+    /// Operating status.
+    pub status: String,
 }
 
 /// Prometheus text-format scrape response payload.

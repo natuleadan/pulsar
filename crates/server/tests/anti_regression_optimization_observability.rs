@@ -301,7 +301,11 @@ fn anti_regression_source_level_rules() {
     }
 
     // Verify systemd units script hardening
-    let units_script = Path::new("../../deploy/scripts/40-systemd-units.sh");
+    let units_script = if Path::new("../../helpers/deploy/scripts/40-systemd-units.sh").exists() {
+        Path::new("../../helpers/deploy/scripts/40-systemd-units.sh")
+    } else {
+        Path::new("../../deploy/scripts/40-systemd-units.sh")
+    };
     assert!(units_script.exists());
     let script_content = std::fs::read_to_string(units_script).unwrap();
     assert!(
@@ -314,8 +318,20 @@ fn anti_regression_source_level_rules() {
     );
 
     // Verify deploy scripts exist
-    assert!(Path::new("../../deploy/scripts/25-setup-observability.sh").exists());
-    assert!(Path::new("../../deploy/scripts/95-validate-metrics.sh").exists());
+    let obs_script = if Path::new("../../helpers/deploy/scripts/25-setup-observability.sh").exists()
+    {
+        Path::new("../../helpers/deploy/scripts/25-setup-observability.sh")
+    } else {
+        Path::new("../../deploy/scripts/25-setup-observability.sh")
+    };
+    let metrics_script =
+        if Path::new("../../helpers/deploy/scripts/95-validate-metrics.sh").exists() {
+            Path::new("../../helpers/deploy/scripts/95-validate-metrics.sh")
+        } else {
+            Path::new("../../deploy/scripts/95-validate-metrics.sh")
+        };
+    assert!(obs_script.exists());
+    assert!(metrics_script.exists());
 }
 
 #[tokio::test]

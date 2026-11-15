@@ -16,12 +16,18 @@ use agents_protocol::{IsolationKind, RuntimeKind};
 use clap::Parser;
 
 fn repo_scripts_dir() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .unwrap()
         .parent()
         .unwrap()
-        .join("deploy/scripts")
+        .to_path_buf();
+    let modern = root.join("helpers/deploy/scripts");
+    if modern.exists() {
+        modern
+    } else {
+        root.join("deploy/scripts")
+    }
 }
 
 fn sample_monolithic_spec() -> TopologySpec {

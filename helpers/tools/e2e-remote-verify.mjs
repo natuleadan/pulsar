@@ -71,7 +71,7 @@ function deployBinaries(root, binDir, keyPath, targetHost, jumpHost = "") {
       runScp(keyPath, src, `${targetHost}:/usr/local/bin/${bin}`, jumpHost);
     }
   }
-  runScp(keyPath, join(root, "deploy/scripts"), `${targetHost}:/opt/agents/`, jumpHost);
+  runScp(keyPath, join(root, "helpers/deploy/scripts"), `${targetHost}:/opt/agents/`, jumpHost);
   runSsh(
     keyPath,
     targetHost,

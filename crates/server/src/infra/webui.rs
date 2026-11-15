@@ -155,6 +155,56 @@ async fn metrics_security_middleware(
         }
     }
 
+    if path == "/version" {
+        let headers = req.headers();
+        let token = headers
+            .get("authorization")
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| {
+                v.strip_prefix("Bearer ")
+                    .or_else(|| v.strip_prefix("bearer "))
+            })
+            .map(str::trim);
+
+        let is_admin = if let Some(t) = token {
+            if let Ok(admin_tok) = std::env::var("AGENTS_METRICS_TOKEN") {
+                t == admin_tok
+            } else {
+                !t.is_empty()
+            }
+        } else {
+            false
+        };
+
+        let body = if is_admin {
+            serde_json::to_string(&serde_json::json!({
+                "service": "agents-server",
+                "version": env!("CARGO_PKG_VERSION"),
+                "status": "ok",
+                "diagnostics": {
+                    "protocol_version": "1.0",
+                    "features": ["auth", "jwt", "metrics", "resilience", "telemetry", "logging", "openapi", "multipart", "security"],
+                    "environment": std::env::var("AGENTS_ENV").unwrap_or_else(|_| "development".into())
+                }
+            }))
+            .unwrap_or_default()
+        } else {
+            serde_json::to_string(&serde_json::json!({
+                "service": "agents-server",
+                "version": env!("CARGO_PKG_VERSION"),
+                "status": "ok"
+            }))
+            .unwrap_or_default()
+        };
+
+        return (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/json")],
+            body,
+        )
+            .into_response();
+    }
+
     next.run(req).await
 }
 

@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { verifyRemoteDistributed, verifyRemoteMonolithic } from "./e2e-remote-verify.mjs";
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
 export interface CloudConfig {
   apiBase: string;

@@ -16,7 +16,7 @@ BIN_DIR="/usr/local/bin"
 ENABLE_OTEL="1"
 INFERENCE_PROVIDER="${AGENTS_LLM_PROVIDER:-ollama}"
 INFERENCE_ENDPOINT="${AGENTS_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}"
-INFERENCE_MODEL="${AGENTS_LLM_MODEL:-llama3.2}"
+INFERENCE_MODEL="${AGENTS_LLM_MODEL:-qwen2.5:0.5b}"
 ADMIN_EMAIL="${AGENTS_ADMIN_EMAIL:-}"
 ADMIN_PASSWORD="${AGENTS_ADMIN_INITIAL_PASSWORD:-}"
 DRY_RUN="${AGENTS_DRY_RUN:-0}"
@@ -160,12 +160,32 @@ EOF
   fi
 }
 
+setup_ollama_if_needed() {
+  if [[ "${INFERENCE_PROVIDER}" != "ollama" ]]; then
+    return 0
+  fi
+  if [[ "${DRY_RUN}" == "1" ]]; then
+    echo "[DRY-RUN] setup ollama daemon and pull lightweight CPU model ${INFERENCE_MODEL}"
+    return 0
+  fi
+  if ! command -v ollama >/dev/null 2>&1; then
+    echo "[INFO] Installing Ollama for sovereign local CPU inference..."
+    curl -fsSL https://ollama.com/install.sh | sh || true
+  fi
+  if command -v ollama >/dev/null 2>&1; then
+    systemctl enable --now ollama 2>/dev/null || true
+    echo "[INFO] Pulling lightweight CPU model ${INFERENCE_MODEL}..."
+    ollama pull "${INFERENCE_MODEL}" 2>/dev/null || true
+  fi
+}
+
 DRY_ARG=()
 if [[ "${DRY_RUN}" == "1" ]]; then
   DRY_ARG=(--dry-run)
 fi
 
 ensure_env_file
+setup_ollama_if_needed
 
 bash "${SCRIPT_DIR}/00-preflight.sh" --role "${ROLE}" "${DRY_ARG[@]}"
 bash "${SCRIPT_DIR}/10-hardening.sh" --role "${ROLE}" "${DRY_ARG[@]}"

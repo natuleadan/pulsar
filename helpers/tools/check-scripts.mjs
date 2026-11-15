@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-// Validates all shell provisioning scripts in deploy/scripts/.
-// Usage: node tools/check-scripts.mjs
+// Validates all shell provisioning scripts in helpers/deploy/scripts/.
+// Usage: node helpers/tools/check-scripts.mjs
 
 import { execFileSync, spawnSync } from "node:child_process"
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..")
-const SCRIPTS_DIR = join(ROOT, "deploy/scripts")
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..")
+const SCRIPTS_DIR = join(ROOT, "helpers/deploy/scripts")
 const MAX_LINES = 500
 const EXPECTED_SCRIPTS = [
   "00-preflight.sh",
@@ -23,7 +23,7 @@ const EXPECTED_SCRIPTS = [
 ]
 
 if (!existsSync(SCRIPTS_DIR)) {
-  console.error("FAIL: missing deploy/scripts directory")
+  console.error("FAIL: missing helpers/deploy/scripts directory")
   process.exit(1)
 }
 
@@ -33,7 +33,7 @@ const files = readdirSync(SCRIPTS_DIR)
 
 for (const req of EXPECTED_SCRIPTS) {
   if (!files.includes(req)) {
-    console.error(`FAIL: missing expected script deploy/scripts/${req}`)
+    console.error(`FAIL: missing expected script helpers/deploy/scripts/${req}`)
     process.exit(1)
   }
 }

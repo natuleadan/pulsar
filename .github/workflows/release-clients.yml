@@ -129,12 +129,12 @@ jobs:
           mkdir -p dist
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             cp "target/${{ matrix.target }}/release/agents-installer.exe" dist/
-            7z a "dist/agents-installer-${{ matrix.target }}.zip" "./dist/agents-installer.exe" ./deploy/scripts
+            7z a "dist/agents-installer-${{ matrix.target }}.zip" "./dist/agents-installer.exe" ./helpers/deploy/scripts
             rm -f dist/agents-installer.exe
           else
             tar -czf "dist/agents-installer-${{ matrix.target }}.tar.gz" \
               -C "target/${{ matrix.target }}/release" agents-installer \
-              -C "${GITHUB_WORKSPACE}/deploy" scripts
+              -C "${GITHUB_WORKSPACE}/helpers/deploy" scripts
           fi
 
       - uses: actions/upload-artifact@v4
@@ -264,7 +264,7 @@ jobs:
           if [ -n "${NSH_UPDATE_KEY:-}" ]; then
             printf '%s\n' "$NSH_UPDATE_KEY" > "$RUNNER_TEMP/update.secret"
           else
-            node tools/release-manifest.mjs keygen "$RUNNER_TEMP/ephemeral-update"
+            node helpers/tools/release-manifest.mjs keygen "$RUNNER_TEMP/ephemeral-update"
             cp "$RUNNER_TEMP/ephemeral-update.secret" "$RUNNER_TEMP/update.secret"
             cp "$RUNNER_TEMP/ephemeral-update.pub" release-assets/update-ephemeral.pub
           fi
@@ -279,7 +279,7 @@ jobs:
           BASE_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG_NAME}"
           shopt -s nullglob
           ASSETS=(release-assets/*.tar.gz release-assets/*.dmg release-assets/*.zip)
-          node tools/release-manifest.mjs sign-manifest \
+          node helpers/tools/release-manifest.mjs sign-manifest \
             --id dev.natuleadan.agents \
             --version "${VERSION}" \
             --base-url "${BASE_URL}" \
@@ -288,7 +288,7 @@ jobs:
             ${PRERELEASE_FLAG} \
             "${ASSETS[@]}"
           if [ -f "$RUNNER_TEMP/ephemeral-update.pub" ]; then
-            node tools/release-manifest.mjs verify-manifest \
+            node helpers/tools/release-manifest.mjs verify-manifest \
               --manifest release-assets/latest.json \
               --sig release-assets/latest.json.sig \
               --pub "$RUNNER_TEMP/ephemeral-update.pub" \

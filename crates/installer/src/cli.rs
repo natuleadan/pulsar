@@ -49,7 +49,7 @@ pub struct TopologyArgs {
     pub ssh_target: Option<String>,
     #[arg(long)]
     pub ssh_key_path: Option<PathBuf>,
-    #[arg(long, default_value = "deploy/scripts")]
+    #[arg(long, default_value = "helpers/deploy/scripts")]
     pub scripts_dir: PathBuf,
     #[arg(long, default_value = "/etc/agents/agents.env")]
     pub env_file_path: PathBuf,

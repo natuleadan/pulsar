@@ -318,10 +318,11 @@ fn build_schemas() -> Value {
         },
         "VersionResponse": {
             "type": "object",
-            "required": ["service", "version"],
+            "required": ["service", "version", "status"],
             "properties": {
                 "service": { "type": "string" },
-                "version": { "type": "string" }
+                "version": { "type": "string" },
+                "status": { "type": "string" }
             }
         },
         "BoxerProblemDetails": {

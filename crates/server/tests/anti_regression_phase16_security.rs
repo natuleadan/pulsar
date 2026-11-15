@@ -359,3 +359,35 @@ async fn anti_regression_circuit_breaker_middleware_and_security_lifecycle() {
     let recovered_resp = harness.router.clone().oneshot(recovered_req).await.unwrap();
     assert_eq!(recovered_resp.status(), StatusCode::OK);
 }
+
+#[tokio::test]
+async fn anti_regression_safe_version_endpoint_scrubs_internal_compiler_metadata() {
+    let harness = build_test_harness(ServerConfig::for_tests()).await;
+
+    // 1. Unauthenticated public request -> returns safe sanitized json, zero compiler leak
+    let (status_anon, body_anon) =
+        send_json(&harness.router, Method::GET, "/version", None, None).await;
+    assert_eq!(status_anon, StatusCode::OK);
+    assert_eq!(body_anon["service"], "agents-server");
+    assert_eq!(body_anon["status"], "ok");
+    assert!(body_anon.get("version").is_some());
+    assert!(body_anon.get("rust_version").is_none());
+    assert!(body_anon.get("features").is_none());
+    assert!(body_anon.get("build_timestamp").is_none());
+    assert!(body_anon.get("git_sha").is_none());
+
+    // 2. Authenticated request with token -> returns extended diagnostics
+    let (status_admin, body_admin) = send_json(
+        &harness.router,
+        Method::GET,
+        "/version",
+        Some("test-admin-token"),
+        None,
+    )
+    .await;
+    assert_eq!(status_admin, StatusCode::OK);
+    assert_eq!(body_admin["service"], "agents-server");
+    assert_eq!(body_admin["status"], "ok");
+    assert!(body_admin["diagnostics"].is_object());
+    assert_eq!(body_admin["diagnostics"]["protocol_version"], "1.0");
+}

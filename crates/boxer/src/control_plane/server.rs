@@ -227,7 +227,8 @@ async fn version_handler() -> impl IntoResponse {
         StatusCode::OK,
         Json(serde_json::json!({
             "service": "agents-boxer",
-            "version": env!("CARGO_PKG_VERSION")
+            "version": env!("CARGO_PKG_VERSION"),
+            "status": "ok"
         })),
     )
 }
