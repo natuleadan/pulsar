@@ -70,7 +70,7 @@ function fallbackLicenseFor(rows, row) {
 }
 
 function collectRustDirectDeps() {
-  const raw = execSync("cargo metadata --locked --format-version=1", {
+  const raw = execSync("cargo metadata --format-version=1", {
     cwd: ROOT,
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,

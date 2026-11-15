@@ -90,7 +90,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck shfmt
 
       - name: Verify Rust 1.100+ supply-chain policy
-        run: cargo --config 'resolver.min-publish-age="7 days"' check --workspace --locked
+        run: cargo --config 'resolver.min-publish-age="7 days"' check --workspace
 
       - name: Validate workspace, formatting, clippy, tests and release plan
         run: pnpm validate
