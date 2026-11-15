@@ -15,6 +15,8 @@ const SSH_OPTS = [
 ];
 
 export function resolveBinaryDir(root) {
+  const linuxDir = join(root, ".local/bin/linux-x86_64");
+  if (existsSync(join(linuxDir, "agents-server"))) return linuxDir;
   const relDir = join(root, "target/release");
   if (existsSync(join(relDir, "agents-server"))) return relDir;
   const dbgDir = join(root, "target/debug");
