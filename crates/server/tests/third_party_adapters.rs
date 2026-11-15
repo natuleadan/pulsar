@@ -1,4 +1,4 @@
-//! Hexagonal ports and adapters tests for Phase 11 third-party cloud integration.
+//! Hexagonal ports and adapters tests for third-party cloud integration.
 
 use agents_server::infra::adapters::{
     BlobStorePort, InfrastructureRegistry, LocalFsBlobStore, QstashMessageBus, VectorMatch,

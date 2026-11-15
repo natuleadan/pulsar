@@ -120,7 +120,7 @@ async fn anti_regression_boxer_control_plane_crud_and_vfs() {
     // 3. Write file into sandbox VFS
     let write_body = serde_json::to_vec(&WriteFileRequest {
         path: "src/main.txt".into(),
-        content: "hello phase 15".into(),
+        content: "hello sandbox test".into(),
     })
     .unwrap();
 
@@ -149,7 +149,7 @@ async fn anti_regression_boxer_control_plane_crud_and_vfs() {
         .await
         .unwrap();
     let read_file: ReadFileResponse = serde_json::from_slice(&bytes).unwrap();
-    assert_eq!(read_file.content, "hello phase 15");
+    assert_eq!(read_file.content, "hello sandbox test");
 
     // 5. Invariant: Path traversal must be blocked
     let req = Request::builder()
@@ -168,7 +168,7 @@ async fn anti_regression_boxer_control_plane_crud_and_vfs() {
 
     // 6. Execute hermetic command inside sandbox
     let exec_body = serde_json::to_vec(&ExecBoxRequest {
-        command: "echo 'phase-15-ok'".into(),
+        command: "echo 'sandbox-exec-ok'".into(),
         timeout_ms: Some(5000),
     })
     .unwrap();
@@ -188,7 +188,7 @@ async fn anti_regression_boxer_control_plane_crud_and_vfs() {
         .unwrap();
     let exec_res: ExecBoxResponse = serde_json::from_slice(&bytes).unwrap();
     assert_eq!(exec_res.exit_code, 0);
-    assert!(exec_res.stdout.contains("phase-15-ok"));
+    assert!(exec_res.stdout.contains("sandbox-exec-ok"));
 
     // 7. Read sandbox status
     let req = Request::builder()

@@ -1,4 +1,4 @@
-//! Third-party cloud sandbox drivers tests for Phase 11.
+//! Third-party cloud sandbox drivers tests.
 
 use std::path::PathBuf;
 

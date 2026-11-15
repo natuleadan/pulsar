@@ -1,4 +1,4 @@
--- Phase 12 schema extension: Dynamic webhook slugs, render slugs,
+-- Schema extension: Dynamic webhook slugs, render slugs,
 -- role approvals (OWASP ASI-02/ASI-08), and durable execution step logs.
 
 ALTER TABLE workflows

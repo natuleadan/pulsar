@@ -1,4 +1,4 @@
--- Phase 4 schema extension: Swarm coordination, DAG workflows, and Autocron
+-- Schema extension: Swarm coordination, DAG workflows, and Autocron
 -- schedules with budget caps and crash-resume `boot_id` recovery checkpoints.
 
 CREATE TABLE IF NOT EXISTS swarm_handoffs (

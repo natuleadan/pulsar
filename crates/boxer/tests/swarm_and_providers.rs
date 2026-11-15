@@ -56,7 +56,7 @@ fn provider_registry_and_swarm_asi05_asi07_and_worktree_drop_guard() -> TestResu
     assert!(reg.resolve("vllm-custom-99").is_some());
 
     // Swarm ASI-05 signed messages & NATS subjects
-    let secret = b"phase4-swarm-hmac-secret";
+    let secret = b"swarm-hmac-test-secret";
     let mut msg = build_signed_swarm_message(
         secret,
         "sess-sw",

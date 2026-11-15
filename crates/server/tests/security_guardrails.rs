@@ -1,4 +1,4 @@
-//! Anti-regression test suite validating Phase 16 security hardening:
+//! Security guardrails and defense-in-depth test suite:
 //! - Agent Circuit Breaker to prevent runaway loops / rogue agent self-DDoS.
 //! - Fine-grained declarative ScopeGuard authorization.
 //! - Multi-node mutual discovery & handshake via HMAC-SHA256 with clock skew protection.
