@@ -17,11 +17,13 @@ ENABLE_OTEL="1"
 INFERENCE_PROVIDER="${AGENTS_LLM_PROVIDER:-ollama}"
 INFERENCE_ENDPOINT="${AGENTS_LLM_ENDPOINT:-http://127.0.0.1:11434/v1}"
 INFERENCE_MODEL="${AGENTS_LLM_MODEL:-llama3.2}"
+ADMIN_EMAIL="${AGENTS_ADMIN_EMAIL:-}"
+ADMIN_PASSWORD="${AGENTS_ADMIN_INITIAL_PASSWORD:-}"
 DRY_RUN="${AGENTS_DRY_RUN:-0}"
 
 usage() {
   cat <<'EOF'
-Usage: setup.sh [--role monolithic|server|boxer] [--domain host] [--preview-domain host] [--acme-email email] [--vlan-cidr cidr] [--bind-ip ip] [--env-file path] [--bin-dir dir] [--enable-otel 0|1] [--inference-provider name] [--inference-endpoint url] [--inference-model model] [--dry-run]
+Usage: setup.sh [--role monolithic|server|boxer] [--domain host] [--preview-domain host] [--acme-email email] [--vlan-cidr cidr] [--bind-ip ip] [--env-file path] [--bin-dir dir] [--enable-otel 0|1] [--inference-provider name] [--inference-endpoint url] [--inference-model model] [--admin-email email] [--admin-password pass] [--dry-run]
 EOF
 }
 
@@ -75,6 +77,14 @@ while [[ $# -gt 0 ]]; do
       INFERENCE_MODEL="${2:?missing value for --inference-model}"
       shift 2
       ;;
+    --admin-email)
+      ADMIN_EMAIL="${2:?missing value for --admin-email}"
+      shift 2
+      ;;
+    --admin-password)
+      ADMIN_PASSWORD="${2:?missing value for --admin-password}"
+      shift 2
+      ;;
     --dry-run)
       DRY_RUN="1"
       shift
@@ -108,13 +118,15 @@ ensure_env_file() {
 
   mkdir -p "$(dirname "${ENV_FILE}")"
   if [[ ! -f "${ENV_FILE}" ]]; then
-    local pg_pass valkey_pass jwt_secret master_key s3_ak s3_sk public_url
+    local pg_pass valkey_pass jwt_secret master_key s3_ak s3_sk public_url admin_email admin_pass
     pg_pass="$(gen_hex 18)"
     valkey_pass="$(gen_hex 18)"
     jwt_secret="$(gen_hex 32)"
     master_key="$(gen_hex 32)"
     s3_ak="ag_$(gen_hex 10)"
     s3_sk="$(gen_hex 20)"
+    admin_email="${ADMIN_EMAIL:-admin@${DOMAIN:-example.com}}"
+    admin_pass="${ADMIN_PASSWORD:-$(gen_hex 16)}"
     if [[ -n "${DOMAIN}" ]]; then
       public_url="https://${DOMAIN}"
     else
@@ -141,6 +153,8 @@ S3_SECRET_KEY=${s3_sk}
 AGENTS_LLM_PROVIDER=${INFERENCE_PROVIDER}
 AGENTS_LLM_ENDPOINT=${INFERENCE_ENDPOINT}
 AGENTS_LLM_MODEL=${INFERENCE_MODEL}
+AGENTS_ADMIN_EMAIL=${admin_email}
+AGENTS_ADMIN_INITIAL_PASSWORD=${admin_pass}
 EOF
     chmod 600 "${ENV_FILE}"
   fi
