@@ -198,7 +198,15 @@ const content = [
 if (process.argv.includes("--check")) {
   const current = existsSync(OUTPUT) ? readFileSync(OUTPUT, "utf8") : ""
   if (current !== content) {
+    const curLines = current.split("\n")
+    const expLines = content.split("\n")
+    const idx = expLines.findIndex((line, i) => curLines[i] !== line)
     console.error("FAIL: ThirdPartyNotices.txt out of date. Run `pnpm notices`.")
+    if (idx >= 0) {
+      console.error(`First diff at line ${idx + 1}:`)
+      console.error(`  file: ${JSON.stringify(curLines[idx] ?? "<EOF>")}`)
+      console.error(`  gen : ${JSON.stringify(expLines[idx] ?? "<EOF>")}`)
+    }
     process.exit(1)
   }
   console.log(`PASS: ThirdPartyNotices.txt up to date (${rows.length} packages).`)
