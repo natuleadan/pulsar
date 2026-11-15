@@ -240,8 +240,8 @@ echo "[PASS] Server dependencies configured (domain=${DOMAIN}, bare_ip=${IS_BARE
 if [[ "${DRY_RUN}" != "1" ]]; then
   ARCH="$(uname -m)"
   case "${ARCH}" in
-    x86_64|amd64) GO_ARCH="amd64" ;;
-    aarch64|arm64) GO_ARCH="arm64" ;;
+    x86_64 | amd64) GO_ARCH="amd64" ;;
+    aarch64 | arm64) GO_ARCH="arm64" ;;
     *) GO_ARCH="amd64" ;;
   esac
 
