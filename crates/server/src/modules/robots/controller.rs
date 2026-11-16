@@ -106,6 +106,42 @@ pub struct RobotActionResponse {
     pub device_id: String,
 }
 
+/// DTO for requesting a pairing PIN.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, garde::Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestPinDto {
+    #[garde(skip)]
+    pub device_id: String,
+}
+
+/// Response containing the 6-digit pairing PIN.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PinResponseDto {
+    pub device_id: String,
+    pub pin: String,
+    pub expires_in_secs: u64,
+}
+
+/// DTO for verifying pairing PIN.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, garde::Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct VerifyPinDto {
+    #[garde(skip)]
+    pub device_id: String,
+    #[garde(skip)]
+    pub pin: String,
+}
+
+/// Response confirming successful pairing.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PairedSessionDto {
+    pub device_id: String,
+    pub session_token: String,
+    pub paired_at_ms: u64,
+}
+
 #[controller("/api/v1/robots")]
 #[derive(Injectable)]
 pub struct RobotGatewayController {
@@ -230,5 +266,46 @@ impl RobotGatewayController {
     pub async fn list(&self) -> Result<Json<Vec<RobotDeviceSummary>>, HttpError> {
         let list = self.service.list_devices().await;
         Ok(Json(list))
+    }
+
+    #[post("/pairing/pin")]
+    #[api(
+        summary = "Request a 6-digit pairing PIN for hardware robot",
+        tag = "Robots"
+    )]
+    #[body(json = RequestPinDto)]
+    #[resp(200, "Generated pairing PIN", json = PinResponseDto)]
+    pub async fn request_pin(
+        &self,
+        #[body] dto: RequestPinDto,
+    ) -> Result<Json<PinResponseDto>, HttpError> {
+        let pin = self.service.generate_pairing_pin(&dto.device_id).await;
+        Ok(Json(PinResponseDto {
+            device_id: dto.device_id,
+            pin,
+            expires_in_secs: 300,
+        }))
+    }
+
+    #[post("/pairing/verify")]
+    #[api(
+        summary = "Verify 6-digit PIN and complete device pairing",
+        tag = "Robots"
+    )]
+    #[body(json = VerifyPinDto)]
+    #[resp(200, "Device paired successfully", json = PairedSessionDto)]
+    pub async fn verify_pin(
+        &self,
+        #[body] dto: VerifyPinDto,
+    ) -> Result<Json<PairedSessionDto>, HttpError> {
+        let session = self
+            .service
+            .verify_pairing_pin(&dto.device_id, &dto.pin)
+            .await?;
+        Ok(Json(PairedSessionDto {
+            device_id: session.device_id,
+            session_token: session.session_token,
+            paired_at_ms: session.paired_at_ms,
+        }))
     }
 }

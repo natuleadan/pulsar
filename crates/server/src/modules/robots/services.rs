@@ -30,6 +30,7 @@ pub struct StoredRobotState {
 #[derive(Clone, Default)]
 pub struct RobotRegistryStore {
     devices: Arc<RwLock<HashMap<String, StoredRobotState>>>,
+    pub pairing: Arc<agents_bridge::PairingGateway>,
 }
 
 impl RobotRegistryStore {
@@ -37,6 +38,7 @@ impl RobotRegistryStore {
     pub fn new() -> Self {
         Self {
             devices: Arc::new(RwLock::new(HashMap::new())),
+            pairing: Arc::new(agents_bridge::PairingGateway::new()),
         }
     }
 }
@@ -327,5 +329,30 @@ impl RobotGatewayService {
         device.last_telemetry.clone().ok_or_else(|| {
             ServerError::NotFound(format!("no telemetry recorded yet for `{device_id}`"))
         })
+    }
+
+    /// Generates a 6-digit cryptographic pairing PIN for a remote edge device.
+    pub async fn generate_pairing_pin(&self, device_id: &str) -> String {
+        self.store
+            .pairing
+            .generate_pin(device_id, 300, now_ms())
+            .await
+    }
+
+    /// Verifies 6-digit PIN and confirms device pairing session.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerError::Unauthorized`] if PIN is expired or incorrect.
+    pub async fn verify_pairing_pin(
+        &self,
+        device_id: &str,
+        pin: &str,
+    ) -> Result<agents_bridge::PairedDeviceSession, ServerError> {
+        self.store
+            .pairing
+            .verify_pin_and_pair(device_id, pin, now_ms())
+            .await
+            .map_err(|e| ServerError::Unauthorized(e.to_string()))
     }
 }

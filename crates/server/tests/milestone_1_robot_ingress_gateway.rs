@@ -183,3 +183,24 @@ async fn test_emergency_stop_manual_trip_and_resume() {
     assert_eq!(polled.len(), 1);
     assert_eq!(polled[0].action, "navigate_waypoint");
 }
+
+#[tokio::test]
+async fn test_pairing_gateway_pin_flow_and_session_issuance() {
+    let bus = Arc::new(BusClient::default());
+    let service = RobotGatewayService::new(bus);
+
+    let pin = service.generate_pairing_pin("edge-quad-99").await;
+    assert_eq!(pin.len(), 6);
+
+    // Wrong PIN
+    let err = service.verify_pairing_pin("edge-quad-99", "123456").await;
+    assert!(err.is_err());
+
+    // Correct PIN
+    let session = service
+        .verify_pairing_pin("edge-quad-99", &pin)
+        .await
+        .expect("correct PIN must pair");
+    assert_eq!(session.device_id, "edge-quad-99");
+    assert!(session.session_token.starts_with("pair_tok_"));
+}
