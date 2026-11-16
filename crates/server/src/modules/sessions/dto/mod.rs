@@ -63,10 +63,45 @@ impl ListSessionsQuery {
     }
 }
 
-/// Payload for persisting crash-recovery draft content.
 #[derive(Debug, Clone, Deserialize, Validate, OpenApiSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SaveDraftDto {
     #[garde(length(max = 32_768))]
     pub content: String,
+}
+
+#[derive(Debug, Clone, Deserialize, serde::Serialize, Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ApproveSessionPlanDto {
+    #[garde(skip)]
+    pub approved: bool,
+    #[garde(length(max = 2048))]
+    pub feedback: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PlanApprovalResponse {
+    pub session_id: String,
+    pub mode: InteractionMode,
+    pub approved: bool,
+    pub approved_by: String,
+    pub approved_at: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, serde::Serialize, Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ContinueTurnDto {
+    #[garde(range(min = 1, max = 100))]
+    pub additional_steps: Option<u32>,
+    #[garde(length(max = 4096))]
+    pub directive: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ContinueTurnResponse {
+    pub session_id: String,
+    pub resumed: bool,
+    pub granted_steps: u32,
 }

@@ -17,7 +17,10 @@ use crate::{
         audit::services::AuditService,
         auth::{entities::AuthenticatedActor, guards::ensure_owner, services::StateStore},
         sessions::{
-            dto::{CreateSessionDto, ListSessionsQuery, SaveDraftDto, UpdateSessionDto},
+            dto::{
+                ApproveSessionPlanDto, ContinueTurnDto, ContinueTurnResponse, CreateSessionDto,
+                ListSessionsQuery, PlanApprovalResponse, SaveDraftDto, UpdateSessionDto,
+            },
             entities::{DraftSnapshot, SessionEntity},
             repositories::SessionStore,
         },
@@ -275,5 +278,69 @@ impl SessionService {
             )
             .await;
         Ok(())
+    }
+
+    pub async fn approve_plan(
+        &self,
+        actor: &AuthenticatedActor,
+        session_id: &str,
+        dto: &ApproveSessionPlanDto,
+    ) -> Result<PlanApprovalResponse, ServerError> {
+        let mut session = self.get_owned(actor, session_id).await?;
+        let now = now_ms();
+        let next_mode = if dto.approved {
+            InteractionMode::Act
+        } else {
+            InteractionMode::Plan
+        };
+        session.mode = next_mode;
+        session.version = session.version.saturating_add(1);
+        session.updated_at = now;
+        let _ = self.store.0.update(session, None).await?;
+        self.cache.remove(&format!("session:{session_id}")).await;
+        let _ = self
+            .audit
+            .record(
+                Some(&actor.user_id),
+                "session.plan_approve",
+                "session",
+                Some(session_id),
+                if dto.approved { "approved" } else { "rejected" },
+                json!({ "feedback": dto.feedback }),
+            )
+            .await;
+        Ok(PlanApprovalResponse {
+            session_id: session_id.to_owned(),
+            mode: next_mode,
+            approved: dto.approved,
+            approved_by: actor.user_id.clone(),
+            approved_at: now,
+        })
+    }
+
+    pub async fn continue_turn(
+        &self,
+        actor: &AuthenticatedActor,
+        session_id: &str,
+        dto: &ContinueTurnDto,
+    ) -> Result<ContinueTurnResponse, ServerError> {
+        let _ = self.get_owned(actor, session_id).await?;
+        let granted_steps = dto.additional_steps.unwrap_or(25);
+        let _ = self
+            .audit
+            .record(
+                Some(&actor.user_id),
+                "session.continue_turn",
+                "session",
+                Some(session_id),
+                "resumed",
+                json!({ "grantedSteps": granted_steps, "directive": dto.directive }),
+            )
+            .await;
+        Ok(ContinueTurnResponse {
+            session_id: session_id.to_owned(),
+            resumed: true,
+            granted_steps,
+        })
     }
 }

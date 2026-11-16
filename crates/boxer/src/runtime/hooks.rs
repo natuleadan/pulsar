@@ -45,20 +45,22 @@ impl RetryPolicy {
     }
 }
 
-/// Optional CodeMode structured JSON schema guard verified on final assistant output.
 #[derive(Debug, Clone)]
 pub struct OutputSchemaContract {
     pub required_fields: Vec<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SchemaRetryAttempt {
+    pub attempt: u32,
+    pub raw_output: String,
+    pub validation_error: String,
+}
+
 impl OutputSchemaContract {
-    /// Parses `text` as JSON object and checks every required top-level key is present.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`BoxerError::ExecutionFailed`] if output violates structured JSON rules.
     pub fn validate(&self, text: &str) -> Result<Value, BoxerError> {
-        let parsed: Value = serde_json::from_str(text.trim()).map_err(|err| {
+        let extracted = extract_json_object_slice(text);
+        let parsed: Value = serde_json::from_str(extracted).map_err(|err| {
             BoxerError::ExecutionFailed(format!("CodeMode structured JSON expected: {err}"))
         })?;
         let Some(obj) = parsed.as_object() else {
@@ -74,6 +76,26 @@ impl OutputSchemaContract {
             }
         }
         Ok(parsed)
+    }
+
+    #[must_use]
+    pub fn build_corrective_prompt(&self, validation_error: &str) -> String {
+        format!(
+            "Schema validation failed ({validation_error}). Respond ONLY with a valid JSON object containing required fields: {:?}",
+            self.required_fields
+        )
+    }
+}
+
+#[must_use]
+pub fn extract_json_object_slice(raw: &str) -> &str {
+    let trimmed = raw.trim();
+    if let (Some(start), Some(end)) = (trimmed.find('{'), trimmed.rfind('}'))
+        && start <= end
+    {
+        &trimmed[start..=end]
+    } else {
+        trimmed
     }
 }
 

@@ -16,7 +16,10 @@ use crate::{
             guards::{AuthGuard, CurrentActor, ScopeGuard, require_scope},
         },
         sessions::{
-            dto::{CreateSessionDto, ListSessionsQuery, SaveDraftDto, UpdateSessionDto},
+            dto::{
+                ApproveSessionPlanDto, ContinueTurnDto, ContinueTurnResponse, CreateSessionDto,
+                ListSessionsQuery, PlanApprovalResponse, SaveDraftDto, UpdateSessionDto,
+            },
             entities::{DraftSnapshot, SessionEntity},
             services::SessionService,
         },
@@ -229,5 +232,51 @@ impl SessionsController {
         require_scope(&actor, ApiKeyScope::Write)?;
         self.service.delete(&actor, &id).await?;
         Ok(())
+    }
+
+    #[post("/:id/plan/approve")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Approve or reject a session plan gate to transition between Plan and Act modes",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[body(json = ApproveSessionPlanDto)]
+    #[resp(200, "Plan approval verdict", json = PlanApprovalResponse)]
+    #[resp(401, "Unauthorized", json = ErrorResponse)]
+    #[resp(403, "Forbidden", json = ErrorResponse)]
+    #[resp(404, "Session not found", json = ErrorResponse)]
+    async fn approve_plan(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+        #[body] dto: ApproveSessionPlanDto,
+    ) -> Result<Json<PlanApprovalResponse>, HttpError> {
+        validate_dto(&dto)?;
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(self.service.approve_plan(&actor, &id, &dto).await?))
+    }
+
+    #[post("/:id/continue")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Explicitly continue a two-level agent turn after step limit or human pause",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[body(json = ContinueTurnDto)]
+    #[resp(200, "Turn continuation granted", json = ContinueTurnResponse)]
+    #[resp(401, "Unauthorized", json = ErrorResponse)]
+    #[resp(403, "Forbidden", json = ErrorResponse)]
+    #[resp(404, "Session not found", json = ErrorResponse)]
+    async fn continue_turn(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+        #[body] dto: ContinueTurnDto,
+    ) -> Result<Json<ContinueTurnResponse>, HttpError> {
+        validate_dto(&dto)?;
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(self.service.continue_turn(&actor, &id, &dto).await?))
     }
 }

@@ -324,7 +324,56 @@ impl NativeAgentRuntime {
         let structured_json = if stop_reason == StopReason::EndTurn
             && let Some(contract) = &cfg.output_contract
         {
-            Some(contract.validate(&final_text)?)
+            match contract.validate(&final_text) {
+                Ok(val) => Some(val),
+                Err(first_err) => {
+                    let mut last_err = first_err.to_string();
+                    let mut recovered = None;
+                    for schema_attempt in 1..=2_u32 {
+                        retry_audit.push(RetryAuditEntry {
+                            turn_index: turns_executed,
+                            attempt: schema_attempt,
+                            error: last_err.clone(),
+                            omitted_from_context: false,
+                            recorded_at_ms: now_ms(),
+                        });
+                        tree.append(SessionEntry::UserMessage {
+                            text: contract.build_corrective_prompt(&last_err),
+                        });
+                        let corrective_req = ModelTurnRequest {
+                            session_id: tree.session_id.clone(),
+                            turn_index: turns_executed.saturating_add(schema_attempt),
+                            endpoint_id: cfg.endpoint_id.clone(),
+                            entries: tree.compact_for_request(cfg.compact_keep_tail),
+                            available_tools: Vec::new(),
+                            json_schema_mode: true,
+                        };
+                        if let Ok(corr_resp) = self.model.complete_turn(corrective_req).await {
+                            final_text = corr_resp.assistant_text.clone();
+                            tree.append(SessionEntry::AssistantText {
+                                text: corr_resp.assistant_text,
+                            });
+                            match contract.validate(&final_text) {
+                                Ok(valid_val) => {
+                                    recovered = Some(valid_val);
+                                    break;
+                                }
+                                Err(next_err) => {
+                                    last_err = next_err.to_string();
+                                }
+                            }
+                        }
+                    }
+                    match recovered {
+                        Some(val) => Some(val),
+                        None => {
+                            return Err(BoxerError::ExecutionFailed(format!(
+                                "schema_validation_exhausted after 2 corrective retries: {last_err}"
+                            )));
+                        }
+                    }
+                }
+            }
         } else {
             None
         };
