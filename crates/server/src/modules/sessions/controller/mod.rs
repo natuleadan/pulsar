@@ -17,8 +17,12 @@ use crate::{
         },
         sessions::{
             dto::{
-                ApproveSessionPlanDto, ContinueTurnDto, ContinueTurnResponse, CreateSessionDto,
-                ListSessionsQuery, PlanApprovalResponse, SaveDraftDto, UpdateSessionDto,
+                AppendSessionEventDto, ApproveSessionPlanDto, ContinueTurnDto,
+                ContinueTurnResponse, CreateSessionDto, ImportSessionDto, ImportSessionResponse,
+                ListSessionsQuery, PlanApprovalResponse, ProjectedConversationSnapshot,
+                RevertSessionDto, RevertSessionResponse, SaveDraftDto, SearchSessionsQuery,
+                SessionArchiveResponse, SessionEventLogEntry, SessionExportBundle,
+                SessionSearchHit, UpdateSessionDto,
             },
             entities::{DraftSnapshot, SessionEntity},
             services::SessionService,
@@ -278,5 +282,152 @@ impl SessionsController {
         validate_dto(&dto)?;
         require_scope(&actor, ApiKeyScope::Write)?;
         Ok(Json(self.service.continue_turn(&actor, &id, &dto).await?))
+    }
+
+    #[get("/search")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Read))]
+    #[api(
+        summary = "Search sessions across titles and append-only event logs",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Matching sessions", json = Vec<SessionSearchHit>)]
+    async fn search(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[query] query: SearchSessionsQuery,
+    ) -> Result<Json<Vec<SessionSearchHit>>, HttpError> {
+        validate_dto(&query)?;
+        require_scope(&actor, ApiKeyScope::Read)?;
+        Ok(Json(self.service.search_sessions(&actor, &query).await?))
+    }
+
+    #[post("/import")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Import a faithful JSONL session bundle with automatic ID collision remapping",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[body(json = ImportSessionDto)]
+    #[resp(200, "Imported session summary", json = ImportSessionResponse)]
+    async fn import_session(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[body] dto: ImportSessionDto,
+    ) -> Result<Json<ImportSessionResponse>, HttpError> {
+        validate_dto(&dto)?;
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(self.service.import_session(&actor, &dto).await?))
+    }
+
+    #[post("/:id/events")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Append an immutable event to the session event log",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[body(json = AppendSessionEventDto)]
+    #[resp(200, "Appended session event", json = SessionEventLogEntry)]
+    async fn append_event(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+        #[body] dto: AppendSessionEventDto,
+    ) -> Result<Json<SessionEventLogEntry>, HttpError> {
+        validate_dto(&dto)?;
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(self.service.append_event(&actor, &id, &dto).await?))
+    }
+
+    #[get("/:id/snapshot")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Read))]
+    #[api(
+        summary = "Derive deterministic conversation state snapshot from append-only event log",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Projected conversation snapshot", json = ProjectedConversationSnapshot)]
+    async fn get_snapshot(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+    ) -> Result<Json<ProjectedConversationSnapshot>, HttpError> {
+        require_scope(&actor, ApiKeyScope::Read)?;
+        Ok(Json(
+            self.service.get_projected_snapshot(&actor, &id).await?,
+        ))
+    }
+
+    #[post("/:id/revert")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Atomically roll back session conversation and VFS commit state to a target turn",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[body(json = RevertSessionDto)]
+    #[resp(200, "Session revert summary", json = RevertSessionResponse)]
+    async fn revert_session(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+        #[body] dto: RevertSessionDto,
+    ) -> Result<Json<RevertSessionResponse>, HttpError> {
+        validate_dto(&dto)?;
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(self.service.revert_to_turn(&actor, &id, &dto).await?))
+    }
+
+    #[post("/:id/export")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Read))]
+    #[api(
+        summary = "Export faithful JSONL bundle of session metadata and event history",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Session JSONL export bundle", json = SessionExportBundle)]
+    async fn export_session(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+    ) -> Result<Json<SessionExportBundle>, HttpError> {
+        require_scope(&actor, ApiKeyScope::Read)?;
+        Ok(Json(self.service.export_session(&actor, &id).await?))
+    }
+
+    #[post("/:id/archive")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Compress session event log with Zstandard into cold storage",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Cold archive summary", json = SessionArchiveResponse)]
+    async fn archive_cold(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+    ) -> Result<Json<SessionArchiveResponse>, HttpError> {
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(self.service.archive_cold(&actor, &id).await?))
+    }
+
+    #[post("/:id/unarchive")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Decompress and restore cold-archived session event log in place",
+        tag = "Sessions",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Unarchive restoration summary", json = SessionArchiveResponse)]
+    async fn unarchive_cold(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+    ) -> Result<Json<SessionArchiveResponse>, HttpError> {
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(self.service.unarchive_cold(&actor, &id).await?))
     }
 }

@@ -1,5 +1,7 @@
 //! Artifact service managing S3/RustFS uploads, Valkey metadata index, and temporary presigned URLs.
 
+pub mod delivery;
+
 use std::sync::Arc;
 
 use base64::Engine;

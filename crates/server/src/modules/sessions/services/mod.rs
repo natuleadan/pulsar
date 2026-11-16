@@ -1,5 +1,7 @@
 //! Session service enforcing ownership (BOLA prevention), optimistic concurrency, and drafts.
 
+pub mod persistence;
+
 use std::{sync::Arc, time::Duration};
 
 use agents_protocol::{CursorPage, InteractionMode};

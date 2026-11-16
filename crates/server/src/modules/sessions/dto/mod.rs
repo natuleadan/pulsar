@@ -105,3 +105,123 @@ pub struct ContinueTurnResponse {
     pub resumed: bool,
     pub granted_steps: u32,
 }
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AppendSessionEventDto {
+    #[garde(range(min = 1))]
+    pub turn_seq: u32,
+    #[garde(length(min = 1, max = 64))]
+    pub event_kind: String,
+    #[garde(length(min = 1, max = 32_768))]
+    pub content: String,
+    #[garde(length(max = 128))]
+    #[serde(default)]
+    pub tool_name: Option<String>,
+    #[garde(length(max = 128))]
+    #[serde(default)]
+    pub vfs_commit_sha: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionEventLogEntry {
+    pub session_id: String,
+    pub sequence_number: u64,
+    pub turn_seq: u32,
+    pub event_kind: String,
+    pub content: String,
+    pub tool_name: Option<String>,
+    pub vfs_commit_sha: Option<String>,
+    pub recorded_at_ms: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ProjectedConversationSnapshot {
+    pub session_id: String,
+    pub latest_sequence_number: u64,
+    pub active_turn_seq: u32,
+    pub latest_vfs_commit_sha: Option<String>,
+    pub events: Vec<SessionEventLogEntry>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RevertSessionDto {
+    #[garde(range(min = 0))]
+    pub target_turn_seq: u32,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct RevertSessionResponse {
+    pub session_id: String,
+    pub restored_turn_seq: u32,
+    pub pruned_events: usize,
+    pub restored_vfs_commit_sha: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionExportBundle {
+    pub session_id: String,
+    pub title: String,
+    pub mode: InteractionMode,
+    pub jsonl: String,
+    pub event_count: usize,
+    pub exported_at_ms: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportSessionDto {
+    #[garde(length(max = 128))]
+    #[serde(default)]
+    pub preferred_session_id: Option<String>,
+    #[garde(length(min = 1, max = 160))]
+    pub title: String,
+    #[garde(skip)]
+    #[serde(default)]
+    pub mode: Option<InteractionMode>,
+    #[garde(length(min = 2, max = 524_288))]
+    pub jsonl: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportSessionResponse {
+    pub session_id: String,
+    pub remapped_from_id: Option<String>,
+    pub imported_events: usize,
+}
+
+#[derive(Debug, Clone, Default, Deserialize, Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchSessionsQuery {
+    #[garde(length(min = 1, max = 256))]
+    pub q: String,
+    #[garde(length(max = 64))]
+    #[serde(default)]
+    pub tool: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionSearchHit {
+    pub session_id: String,
+    pub title: String,
+    pub matched_excerpt: String,
+    pub updated_at: u64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionArchiveResponse {
+    pub session_id: String,
+    pub archived: bool,
+    pub archive_key: String,
+    pub raw_bytes: usize,
+    pub compressed_bytes: usize,
+    pub restored_events: usize,
+}

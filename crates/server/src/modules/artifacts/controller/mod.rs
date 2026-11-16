@@ -11,8 +11,9 @@ use crate::{
     modules::{
         artifacts::{
             dto::{
-                ArtifactListResponse, ArtifactRecord, PresignQueryDto, PresignedArtifactResponse,
-                UploadArtifactDto,
+                ArtifactListResponse, ArtifactRecord, DeliverVerifiedArtifactDto, PresignQueryDto,
+                PresignedArtifactResponse, RecordTaskPhaseDto, TaskCrashResumePlan,
+                TaskPhaseCheckpoint, UploadArtifactDto, VerifiedDeliveryReceipt,
             },
             services::ArtifactService,
         },
@@ -191,5 +192,62 @@ impl ArtifactsController {
                 .insert(HeaderName::from_static("content-type"), val);
         }
         Ok(resp)
+    }
+
+    #[post("/:task_id/deliver")]
+    #[guard(AuthGuard)]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Deliver and verify a cryptographic task artifact with SHA-256 digest to S3",
+        tag = "Artifacts",
+        security = "bearerAuth"
+    )]
+    #[body(json = DeliverVerifiedArtifactDto)]
+    #[resp(200, "Cryptographically verified artifact receipt", json = VerifiedDeliveryReceipt)]
+    #[resp(400, "Digest mismatch or invalid payload", json = ErrorResponse)]
+    #[resp(401, "Unauthorized", json = ErrorResponse)]
+    #[resp(403, "Forbidden", json = ErrorResponse)]
+    async fn deliver_artifact(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param("task_id")] task_id: String,
+        #[body] dto: DeliverVerifiedArtifactDto,
+    ) -> Result<Json<VerifiedDeliveryReceipt>, HttpError> {
+        Ok(Json(
+            self.service
+                .deliver_verified_artifact(&actor, &task_id, &dto)
+                .await?,
+        ))
+    }
+
+    #[post("/:task_id/phases")]
+    #[api(
+        summary = "Record a durable phase completion checkpoint for crash resumption",
+        tag = "Tasks"
+    )]
+    #[body(json = RecordTaskPhaseDto)]
+    #[resp(200, "Recorded phase checkpoint", json = TaskPhaseCheckpoint)]
+    #[resp(409, "Stale fencing token", json = ErrorResponse)]
+    async fn record_phase(
+        &self,
+        #[param("task_id")] task_id: String,
+        #[body] dto: RecordTaskPhaseDto,
+    ) -> Result<Json<TaskPhaseCheckpoint>, HttpError> {
+        Ok(Json(
+            self.service.record_phase_checkpoint(&task_id, &dto).await?,
+        ))
+    }
+
+    #[get("/:task_id/resume-plan")]
+    #[api(
+        summary = "Query confirmed task phases to resume execution without re-running completed work",
+        tag = "Tasks"
+    )]
+    #[resp(200, "Crash resumption plan", json = TaskCrashResumePlan)]
+    async fn get_resume_plan(
+        &self,
+        #[param("task_id")] task_id: String,
+    ) -> Result<Json<TaskCrashResumePlan>, HttpError> {
+        Ok(Json(self.service.get_crash_resume_plan(&task_id).await?))
     }
 }
