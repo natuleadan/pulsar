@@ -76,7 +76,7 @@ impl ProviderProtocol {
                 }
             }
             Self::OpenAiCompatible | Self::AnthropicMessages | Self::Unknown(_) => {
-                if base.ends_with("/v1") {
+                if base.ends_with("/openai") || base.ends_with("/v1") {
                     format!("{base}/models")
                 } else {
                     format!("{base}/v1/models")
