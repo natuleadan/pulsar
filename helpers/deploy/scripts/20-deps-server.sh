@@ -205,6 +205,19 @@ http:
           - url: "http://127.0.0.1:8080"
 EOF
 else
+  if [[ "${DRY_RUN}" == "1" ]]; then
+    echo "[DRY-RUN] generate self-signed TLS cert in /etc/traefik/certs/selfsigned.{crt,key}"
+  else
+    mkdir -p /etc/traefik/certs
+    if [[ ! -f /etc/traefik/certs/selfsigned.crt || ! -f /etc/traefik/certs/selfsigned.key ]]; then
+      openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 365 \
+        -subj "/CN=${DOMAIN}" \
+        -keyout /etc/traefik/certs/selfsigned.key \
+        -out /etc/traefik/certs/selfsigned.crt >/dev/null 2>&1
+      chmod 600 /etc/traefik/certs/selfsigned.key
+    fi
+  fi
+
   write_file /etc/traefik/traefik.yml <<EOF
 api:
   dashboard: false
@@ -237,6 +250,13 @@ providers:
 EOF
 
   write_file /etc/traefik/dynamic/agents-core.yml <<EOF
+tls:
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/selfsigned.crt
+        keyFile: /etc/traefik/certs/selfsigned.key
+
 http:
   middlewares:
     agents-security-headers:
@@ -246,20 +266,31 @@ http:
         contentTypeNosniff: true
         frameDeny: true
   routers:
+    agents-s3-artifacts:
+      rule: "Host(\`${DOMAIN}\`) && PathPrefix(\`/agents-artifacts\`)"
+      priority: 20
+      entryPoints:
+        - websecure
+      service: agents-rustfs
+      tls: {}
     agents-api:
       rule: "Host(\`${DOMAIN}\`)"
+      priority: 10
       entryPoints:
         - websecure
       service: agents-server
       middlewares:
         - agents-security-headers
-      tls:
-        certResolver: letsencrypt
+      tls: {}
   services:
     agents-server:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:8080"
+    agents-rustfs:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:9000"
 EOF
 fi
 
@@ -280,6 +311,23 @@ if [[ "${DRY_RUN}" != "1" ]]; then
     install -m 0755 "/tmp/nats-server-${NATS_VER}-linux-${GO_ARCH}/nats-server" /usr/local/bin/nats-server
     rm -rf /tmp/nats-server.tgz "/tmp/nats-server-${NATS_VER}-linux-${GO_ARCH}"
   fi
+  mkdir -p /var/lib/nats/jetstream
+  write_file /etc/systemd/system/nats-server.service <<'EOF'
+[Unit]
+Description=NATS JetStream Server
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/nats-server -c /etc/nats/nats-server.conf
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload
+  systemctl enable --now nats-server.service
 
   if ! command -v traefik >/dev/null 2>&1; then
     TRAEFIK_VER="v3.3.4"
@@ -288,6 +336,25 @@ if [[ "${DRY_RUN}" != "1" ]]; then
     install -m 0755 /tmp/traefik /usr/local/bin/traefik
     rm -f /tmp/traefik.tgz /tmp/traefik
   fi
+  mkdir -p /var/lib/traefik
+  touch /var/lib/traefik/acme.json
+  chmod 600 /var/lib/traefik/acme.json
+  write_file /etc/systemd/system/traefik.service <<'EOF'
+[Unit]
+Description=Traefik Edge Reverse Proxy
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/traefik --configFile=/etc/traefik/traefik.yml
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  systemctl daemon-reload
+  systemctl enable --now traefik.service
 
   if [[ -r "${ENV_FILE}" ]]; then
     VALKEY_URL_VAL="$(awk -F= '/^VALKEY_URL=/{print substr($0, index($0,$2)); exit}' "${ENV_FILE}")"
@@ -299,6 +366,7 @@ if [[ "${DRY_RUN}" != "1" ]]; then
           echo "requirepass ${VALKEY_PASS}" >>"${cfg}"
         fi
       done
+      systemctl restart valkey-server 2>/dev/null || systemctl restart redis-server 2>/dev/null || true
     fi
   fi
 

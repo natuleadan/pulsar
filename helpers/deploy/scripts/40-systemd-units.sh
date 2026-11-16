@@ -80,6 +80,10 @@ if [[ "${DRY_RUN}" != "1" ]]; then
     useradd --system --no-create-home --shell /usr/sbin/nologin agents
   fi
   install -d -m 0750 -o root -g agents /etc/agents
+  if [[ -f "${ENV_FILE}" ]]; then
+    chown root:agents "${ENV_FILE}"
+    chmod 0640 "${ENV_FILE}"
+  fi
   install -d -m 0750 -o agents -g agents /var/lib/agents /var/lib/agents/boxes /var/log/agents
 else
   echo "[DRY-RUN] ensure unprivileged system user 'agents' and /etc/agents, /var/lib/agents"
@@ -166,9 +170,11 @@ EOF
 run_cmd systemctl daemon-reload
 if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "server" ]]; then
   run_cmd systemctl enable --now agents-server.service
+  run_cmd systemctl restart agents-server.service
 fi
 if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "boxer" ]]; then
   run_cmd systemctl enable --now agents-boxer.service
+  run_cmd systemctl restart agents-boxer.service
 fi
 
 echo "[PASS] Hardened systemd units and logrotate installed for role=${ROLE}"
