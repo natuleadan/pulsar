@@ -4,6 +4,7 @@
 
 pub mod hooks;
 pub mod instincts;
+pub mod scanner;
 
 use crate::infra::error::ServerError;
 use agents_protocol::{AgentCard, AgentCardEndpoints, PluginManifest, PluginToolDefinition};

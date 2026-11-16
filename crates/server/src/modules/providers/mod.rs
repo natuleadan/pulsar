@@ -4,6 +4,7 @@ pub mod controller;
 pub mod crypto;
 pub mod dto;
 pub mod entities;
+pub mod instances;
 pub mod repositories;
 pub mod services;
 
