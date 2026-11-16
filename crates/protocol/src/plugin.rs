@@ -42,9 +42,13 @@ impl PluginCapabilityMask {
         let lower = host.to_ascii_lowercase();
         self.allowed_hosts.iter().any(|allowed| {
             let allowed_lower = allowed.to_ascii_lowercase();
-            allowed_lower == "*"
-                || allowed_lower == lower
-                || lower.ends_with(&format!(".{allowed_lower}"))
+            if allowed_lower == "*" || allowed_lower == lower {
+                return true;
+            }
+            if let Some(suffix) = allowed_lower.strip_prefix("*.") {
+                return lower == suffix || lower.ends_with(&format!(".{suffix}"));
+            }
+            lower.ends_with(&format!(".{allowed_lower}"))
         })
     }
 

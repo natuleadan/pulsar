@@ -9,6 +9,7 @@ pub mod db;
 pub mod doctor;
 pub mod error;
 pub mod events;
+pub mod hermetic;
 pub mod migrate;
 pub mod observability;
 pub mod state;
