@@ -37,7 +37,7 @@ redis (cargo)                          1.8.2    BSD-3-Clause              https:
 reqwest (cargo)                        0.13.5   MIT OR Apache-2.0         https://github.com/seanmonstar/reqwest
 ring (cargo)                           0.17.14  Apache-2.0 AND ISC        https://github.com/briansmith/ring
 rustls (cargo)                         0.23.46  Apache-2.0 OR ISC OR MIT  https://github.com/rustls/rustls
-scalar_api_reference (cargo)           0.2.24   MIT                       https://github.com/scalar/scalar
+scalar_api_reference (cargo)           0.2.25   MIT                       https://github.com/scalar/scalar
 semver (cargo)                         1.0.28   MIT OR Apache-2.0         https://github.com/dtolnay/semver
 serde (cargo)                          1.0.229  MIT OR Apache-2.0         https://github.com/serde-rs/serde
 serde_json (cargo)                     1.0.154  MIT OR Apache-2.0         https://github.com/serde-rs/json
