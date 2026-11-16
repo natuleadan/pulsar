@@ -8,3 +8,4 @@ pub mod envgen;
 pub mod error;
 pub mod planner;
 pub mod runner;
+pub mod setup;
