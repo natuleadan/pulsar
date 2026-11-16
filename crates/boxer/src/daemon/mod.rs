@@ -3,8 +3,10 @@
 
 pub mod agent_bridge;
 pub mod bus;
+pub mod dlq;
 pub mod watchdog;
 
+pub use dlq::{DeadLetterEntry, DlqDecision, PoisonMessageFilter};
 pub use watchdog::{
     SessionToolMask, SystemOneDecisionKind, SystemOneVerdict, WATCHDOG_SILENCE_THRESHOLD_SECS,
     WatchdogAction, WatchdogTelemetrySample, evaluate_system_one_watchdog,

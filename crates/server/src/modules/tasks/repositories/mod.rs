@@ -71,6 +71,10 @@ pub trait TaskRepository: Send + Sync + 'static {
         task_id: &'a str,
         now_ms: u64,
     ) -> BoxFuture<'a, Result<TaskEntity, ServerError>>;
+    fn reap_expired_leases<'a>(
+        &'a self,
+        now_ms: u64,
+    ) -> BoxFuture<'a, Result<Vec<TaskEntity>, ServerError>>;
 }
 
 pub(crate) fn validate_fenced_mutation(

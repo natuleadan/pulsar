@@ -87,3 +87,39 @@ pub async fn start_autocron_worker(
 
     Ok(autocron.start_scheduled_runner(period, boot_id))
 }
+
+/// Spawns a periodic background sweeper (default 60s) reclaiming expired task leases.
+///
+/// # Errors
+///
+/// Returns [`ServerError`] when [`TaskService`] cannot be resolved from the container.
+pub async fn start_task_sweeper_worker(
+    app: &Application<OpenApiAxumApplication>,
+    period: Duration,
+) -> Result<ScheduledTask, ServerError> {
+    let tasks = app
+        .container()
+        .resolve::<crate::modules::tasks::services::TaskService>()
+        .await
+        .map_err(|e| ServerError::Internal(e.to_string()))?;
+
+    let task = interval(period, move || {
+        let tasks = Arc::clone(&tasks);
+        async move {
+            let now = crate::infra::state::now_ms();
+            match tasks.sweep_expired_leases(now).await {
+                Ok(reaped) if !reaped.is_empty() => {
+                    tracing::info!(
+                        reaped_count = reaped.len(),
+                        "task sweeper reclaimed expired task leases"
+                    );
+                }
+                Ok(_) => {}
+                Err(err) => {
+                    tracing::warn!(error = %err, "task sweeper iteration failed");
+                }
+            }
+        }
+    });
+    Ok(task)
+}

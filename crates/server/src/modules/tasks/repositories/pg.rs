@@ -304,6 +304,33 @@ impl TaskRepository for PgTaskRepository {
             }
         })
     }
+
+    fn reap_expired_leases<'a>(
+        &'a self,
+        now_ms: u64,
+    ) -> BoxFuture<'a, Result<Vec<TaskEntity>, ServerError>> {
+        Box::pin(async move {
+            let rows = sqlx::query(
+                "UPDATE tasks
+                 SET state = 'queued',
+                     lease_holder = NULL,
+                     lease_expires_at = NULL,
+                     fencing_token = fencing_token + 1,
+                     version = version + 1,
+                     updated_at = $1
+                 WHERE state IN ('leased', 'running', 'blocked')
+                   AND lease_expires_at IS NOT NULL
+                   AND lease_expires_at <= $1
+                 RETURNING id, session_id, owner_id, prompt, state, mode, fencing_token, lease_holder, lease_expires_at, idempotency_key, version, exit_code, stop_reason, output_summary, created_at, updated_at",
+            )
+            .bind(now_ms as i64)
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| ServerError::Internal(format!("reap expired leases failed: {e}")))?;
+
+            rows.into_iter().map(row_to_task).collect()
+        })
+    }
 }
 
 fn row_to_task(row: sqlx::postgres::PgRow) -> Result<TaskEntity, ServerError> {

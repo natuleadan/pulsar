@@ -127,4 +127,31 @@ impl TaskService {
             state: "CancelledByOperator".to_owned(),
         })
     }
+
+    /// Reaps expired task leases and re-enqueues them with incremented fencing tokens.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ServerError`] on persistence errors.
+    pub async fn sweep_expired_leases(&self, now_ms: u64) -> Result<Vec<TaskEntity>, ServerError> {
+        let reaped = self.store.0.reap_expired_leases(now_ms).await?;
+        for task in &reaped {
+            let _ = emit_stream_event(
+                &self.streams,
+                &self.bus,
+                &task.session_id,
+                Some(&task.id),
+                StreamPayload::WorkerStateChanged {
+                    node_id: "task-sweeper".to_owned(),
+                    status: WorkerStatus::Working,
+                    reason: Some(format!(
+                        "reaped expired lease, bumped fencing token to {}",
+                        task.fencing_token.0
+                    )),
+                },
+            )
+            .await;
+        }
+        Ok(reaped)
+    }
 }

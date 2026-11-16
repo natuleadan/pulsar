@@ -5,6 +5,7 @@
 pub mod artifact;
 pub mod auth;
 pub mod config_hierarchy;
+pub mod dlq;
 pub mod error_taxonomy;
 pub mod identity;
 pub mod node;
@@ -33,6 +34,7 @@ pub use config_hierarchy::{
     ConfigDiagnostic, ConfigDiagnosticSeverity, ConfigLayer, ConfigResolutionOutcome, ConfigScope,
     EffectiveSettings, resolve_settings_hierarchy, serialize_minimal_diff,
 };
+pub use dlq::{DeadLetterEntry, DlqDecision, PoisonMessageFilter};
 pub use error_taxonomy::{
     ClassifiedProviderError, ProviderErrorClass, classify_provider_error,
     compute_exponential_backoff_ms, scrub_sensitive_tokens,

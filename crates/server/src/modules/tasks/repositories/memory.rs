@@ -211,4 +211,31 @@ impl TaskRepository for InMemoryTaskRepository {
             Ok(task.clone())
         })
     }
+
+    fn reap_expired_leases<'a>(
+        &'a self,
+        now_ms: u64,
+    ) -> BoxFuture<'a, Result<Vec<TaskEntity>, ServerError>> {
+        Box::pin(async move {
+            let mut guard = self.tasks.lock().await;
+            let mut reaped = Vec::new();
+            for task in guard.iter_mut() {
+                let is_expired = matches!(
+                    task.state,
+                    TaskState::Leased | TaskState::Running | TaskState::Blocked
+                ) && task.lease_expires_at.is_some_and(|exp| exp <= now_ms);
+
+                if is_expired {
+                    task.state = TaskState::Queued;
+                    task.lease_holder = None;
+                    task.lease_expires_at = None;
+                    task.fencing_token = FencingToken(task.fencing_token.0.saturating_add(1));
+                    task.version = task.version.saturating_add(1);
+                    task.updated_at = now_ms;
+                    reaped.push(task.clone());
+                }
+            }
+            Ok(reaped)
+        })
+    }
 }
