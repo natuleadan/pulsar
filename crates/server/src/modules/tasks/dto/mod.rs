@@ -1,8 +1,8 @@
 //! Validated DTOs for task submission, fencing leases, steering, and completion.
 
 use agents_protocol::{
-    AgentLifecyclePolicy, ExecOptions, FencingToken, InteractionMode, SandboxProfile, StopReason,
-    TaskState,
+    AgentLifecyclePolicy, ExecOptions, FencingToken, InteractionMode, SandboxProfile,
+    SteeringInterventionKind, StopReason, TaskState,
 };
 use garde::Validate;
 use ironic::OpenApiSchema;
@@ -68,6 +68,12 @@ pub struct CompleteTaskDto {
 pub struct SteerTaskDto {
     #[garde(length(min = 1, max = 8_192))]
     pub content: String,
+    #[garde(skip)]
+    #[serde(default)]
+    pub kind: Option<SteeringInterventionKind>,
+    #[garde(skip)]
+    #[serde(default)]
+    pub fencing_token: Option<FencingToken>,
 }
 
 /// Follow-up prompt queued for the outer loop.

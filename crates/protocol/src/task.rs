@@ -306,6 +306,14 @@ pub struct TaskLease {
     pub expires_at_ms: u64,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SteeringInterventionKind {
+    #[default]
+    ImmediateIntervention,
+    FollowUpPrompt,
+}
+
 /// Live steering injection routed into the inner tool loop during execution.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -314,6 +322,10 @@ pub struct SteeringMessage {
     pub session_id: String,
     pub task_id: String,
     pub content: String,
+    #[serde(default)]
+    pub kind: SteeringInterventionKind,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fencing_token: Option<FencingToken>,
     pub emitted_at_ms: u64,
 }
 

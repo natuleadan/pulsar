@@ -58,12 +58,16 @@ pub use sandbox::{
     ThirdPartyProvider,
 };
 pub use schema::{ProtocolSchemaBundle, SandboxMatrixEntry, export_protocol_schema};
-pub use stream::{EventEnvelope, StreamPayload, TaskStreamEvent, ToolPhase};
-pub use swarm::{AgentHandoff, PermissionError, PermissionMask, SwarmMessage, SwarmTopic};
+pub use stream::{EventEnvelope, EventFeedLane, StreamPayload, TaskStreamEvent, ToolPhase};
+pub use swarm::{
+    AgentHandoff, MAX_CONCURRENT_SUBAGENTS_PER_TREE, MAX_SUBAGENT_DEPTH, PermissionError,
+    PermissionMask, SubagentInceptionError, SubagentLineage, SwarmMessage, SwarmTopic,
+    validate_subagent_spawn,
+};
 pub use task::{
     AgentLifecycleMode, AgentLifecyclePolicy, FencingToken, FollowUpMessage, InferenceEndpointSpec,
-    InteractionMode, ProxyCredentialSpec, SteeringMessage, StopReason, TaskLease, TaskRequest,
-    TaskResult, TaskState, TurnDecision, WorkerStatus,
+    InteractionMode, ProxyCredentialSpec, SteeringInterventionKind, SteeringMessage, StopReason,
+    TaskLease, TaskRequest, TaskResult, TaskState, TurnDecision, WorkerStatus,
 };
 pub use tool_decision::{
     ToolDecisionKind, ToolDecisionVerdict, ToolPolicyRule, build_hygienic_tool_env,

@@ -180,6 +180,8 @@ async fn live_steering_interrupts_inner_batch_while_hooks_and_followup_drive_out
             session_id: "sess-steer".to_owned(),
             task_id: "task-steer".to_owned(),
             content: "/plan".to_owned(),
+            kind: agents_protocol::SteeringInterventionKind::ImmediateIntervention,
+            fencing_token: Some(agents_protocol::FencingToken(1)),
             emitted_at_ms: now_ms(),
         })
         .await?;

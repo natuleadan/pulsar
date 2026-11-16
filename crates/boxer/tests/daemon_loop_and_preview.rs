@@ -330,6 +330,8 @@ async fn dual_loop_enforces_plan_mode_and_processes_steering_and_followups() -> 
             session_id: "s-act".to_owned(),
             task_id: "t-act".to_owned(),
             content: "steered-target".to_owned(),
+            kind: agents_protocol::SteeringInterventionKind::ImmediateIntervention,
+            fencing_token: Some(agents_protocol::FencingToken(1)),
             emitted_at_ms: now_ms(),
         })
         .await?;

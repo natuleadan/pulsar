@@ -16,6 +16,7 @@ use crate::{
         swarm::{
             dto::{
                 BlackboardEntryResponse, CreateHandoffDto, PutBlackboardDto, SendSwarmMessageDto,
+                SubagentChatDto,
             },
             entities::{MediatedSwarmMessage, SwarmHandoffEntity},
             services::SwarmService,
@@ -188,5 +189,35 @@ impl SwarmController {
             .await?
             .ok_or_else(|| HttpError::not_found("NOT_FOUND", "blackboard key not found"))?;
         Ok(Json(BlackboardEntryResponse { key, value: val }))
+    }
+
+    #[post("/:session_id/subagents/:sub_id/chat")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Mediate operator dialogue with a specific subagent over NATS",
+        tag = "Swarm",
+        security = "bearerAuth"
+    )]
+    #[body(json = SubagentChatDto)]
+    #[resp(200, "Mediated subagent dialogue message", json = MediatedSwarmMessage)]
+    #[resp(401, "Unauthorized", json = ErrorResponse)]
+    #[resp(403, "Forbidden", json = ErrorResponse)]
+    #[resp(404, "Session not found", json = ErrorResponse)]
+    #[resp(422, "Validation error", json = ErrorResponse)]
+    #[resp(500, "Internal server error", json = ErrorResponse)]
+    async fn chat_with_subagent(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] session_id: String,
+        #[param] sub_id: String,
+        #[body] dto: SubagentChatDto,
+    ) -> Result<Json<MediatedSwarmMessage>, HttpError> {
+        validate_dto(&dto)?;
+        require_scope(&actor, ApiKeyScope::Write)?;
+        let msg = self
+            .service
+            .chat_with_subagent(&actor, &session_id, &sub_id, &dto)
+            .await?;
+        Ok(Json(msg))
     }
 }

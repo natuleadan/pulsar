@@ -32,7 +32,7 @@ impl fmt::Display for PermissionError {
 impl std::error::Error for PermissionError {}
 
 /// Capability mask enforced across parent-to-child swarm delegations.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PermissionMask {
     pub can_read_fs: bool,
@@ -111,4 +111,114 @@ pub struct AgentHandoff {
     pub worktree_branch: Option<String>,
     pub delegated_mask: PermissionMask,
     pub goal: String,
+}
+
+pub const MAX_SUBAGENT_DEPTH: u8 = 2;
+pub const MAX_CONCURRENT_SUBAGENTS_PER_TREE: usize = 5;
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SubagentLineage {
+    pub root_session_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub parent_agent_id: Option<String>,
+    pub current_agent_id: String,
+    pub depth: u8,
+    #[serde(default)]
+    pub call_path: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SubagentInceptionError {
+    DepthExceeded {
+        requested_depth: u8,
+        max_depth: u8,
+    },
+    TreeCapacityExceeded {
+        active_count: usize,
+        max_capacity: usize,
+    },
+    CycleDetected {
+        target_agent_id: String,
+    },
+    TokenBudgetExhausted {
+        remaining_tokens: u64,
+    },
+}
+
+impl fmt::Display for SubagentInceptionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::DepthExceeded {
+                requested_depth,
+                max_depth,
+            } => write!(
+                f,
+                "SUBAGENT_DEPTH_EXCEEDED: requested depth {requested_depth} exceeds max {max_depth}"
+            ),
+            Self::TreeCapacityExceeded {
+                active_count,
+                max_capacity,
+            } => write!(
+                f,
+                "SUBAGENT_TREE_CAPACITY_EXCEEDED: active {active_count} reaches max {max_capacity}"
+            ),
+            Self::CycleDetected { target_agent_id } => write!(
+                f,
+                "SUBAGENT_CYCLE_DETECTED: target `{target_agent_id}` is already in ancestor call path"
+            ),
+            Self::TokenBudgetExhausted { remaining_tokens } => write!(
+                f,
+                "SUBAGENT_BUDGET_EXHAUSTED: remaining session tokens ({remaining_tokens}) insufficient"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for SubagentInceptionError {}
+
+pub fn validate_subagent_spawn(
+    parent_lineage: &SubagentLineage,
+    target_agent_id: &str,
+    active_subagents_in_tree: usize,
+    remaining_session_tokens: u64,
+) -> Result<SubagentLineage, SubagentInceptionError> {
+    let next_depth = parent_lineage.depth.saturating_add(1);
+    if next_depth > MAX_SUBAGENT_DEPTH {
+        return Err(SubagentInceptionError::DepthExceeded {
+            requested_depth: next_depth,
+            max_depth: MAX_SUBAGENT_DEPTH,
+        });
+    }
+    if parent_lineage
+        .call_path
+        .iter()
+        .any(|id| id == target_agent_id)
+        || parent_lineage.current_agent_id == target_agent_id
+    {
+        return Err(SubagentInceptionError::CycleDetected {
+            target_agent_id: target_agent_id.to_owned(),
+        });
+    }
+    if active_subagents_in_tree >= MAX_CONCURRENT_SUBAGENTS_PER_TREE {
+        return Err(SubagentInceptionError::TreeCapacityExceeded {
+            active_count: active_subagents_in_tree,
+            max_capacity: MAX_CONCURRENT_SUBAGENTS_PER_TREE,
+        });
+    }
+    if remaining_session_tokens == 0 {
+        return Err(SubagentInceptionError::TokenBudgetExhausted {
+            remaining_tokens: 0,
+        });
+    }
+    let mut call_path = parent_lineage.call_path.clone();
+    call_path.push(parent_lineage.current_agent_id.clone());
+    Ok(SubagentLineage {
+        root_session_id: parent_lineage.root_session_id.clone(),
+        parent_agent_id: Some(parent_lineage.current_agent_id.clone()),
+        current_agent_id: target_agent_id.to_owned(),
+        depth: next_depth,
+        call_path,
+    })
 }

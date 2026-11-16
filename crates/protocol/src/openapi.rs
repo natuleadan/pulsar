@@ -479,3 +479,18 @@ impl OpenApiSchema for ClassifiedProviderError {
         })
     }
 }
+
+impl OpenApiSchema for crate::SubagentLineage {
+    fn openapi_schema() -> Value {
+        json!({
+            "type": "object", "title": "SubagentLineage", "required": ["rootSessionId", "currentAgentId", "depth"],
+            "properties": { "rootSessionId": { "type": "string" }, "parentAgentId": { "type": "string", "nullable": true }, "currentAgentId": { "type": "string" }, "depth": { "type": "integer" }, "callPath": { "type": "array", "items": { "type": "string" } } }
+        })
+    }
+}
+
+impl OpenApiSchema for crate::SteeringInterventionKind {
+    fn openapi_schema() -> Value {
+        json!({ "type": "string", "title": "SteeringInterventionKind", "enum": ["immediateIntervention", "followUpPrompt"], "example": "immediateIntervention" })
+    }
+}

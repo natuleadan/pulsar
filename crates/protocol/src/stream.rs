@@ -64,8 +64,36 @@ pub enum StreamPayload {
         workflow_id: String,
         triggered_at_ms: u64,
     },
+    StreamLagged {
+        dropped_render_events: u64,
+        buffer_capacity: usize,
+    },
     #[serde(other)]
     Unknown,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum EventFeedLane {
+    Control,
+    Render,
+}
+
+impl StreamPayload {
+    #[must_use]
+    pub const fn lane(&self) -> EventFeedLane {
+        match self {
+            Self::TaskChunk { .. } => EventFeedLane::Render,
+            Self::WorkerStateChanged { .. }
+            | Self::AgentTurnLifecycle { .. }
+            | Self::SteeringAck { .. }
+            | Self::ToolCallEvent { .. }
+            | Self::PreviewPublished(_)
+            | Self::AutocronTriggered { .. }
+            | Self::StreamLagged { .. }
+            | Self::Unknown => EventFeedLane::Control,
+        }
+    }
 }
 
 /// Canonical ordered envelope carried across NATS JetStream, WebSockets, and SSE.

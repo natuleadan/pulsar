@@ -181,7 +181,15 @@ impl GatewayService {
             WsClientCommand::Steer { task_id, content } => {
                 match self
                     .tasks
-                    .steer(actor, &task_id, &SteerTaskDto { content })
+                    .steer(
+                        actor,
+                        &task_id,
+                        &SteerTaskDto {
+                            content,
+                            kind: None,
+                            fencing_token: None,
+                        },
+                    )
                     .await
                 {
                     Ok(msg) => vec![WsServerFrame::Ack {

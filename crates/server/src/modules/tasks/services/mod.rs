@@ -6,8 +6,8 @@ mod ops;
 use std::{sync::Arc, time::Duration};
 
 use agents_protocol::{
-    CursorPage, ExecutionScope, FencingToken, SteeringMessage, StreamPayload, TaskLease,
-    TaskRequest, TaskState, WorkerStatus,
+    CursorPage, ExecutionScope, FencingToken, SteeringInterventionKind, SteeringMessage,
+    StreamPayload, TaskLease, TaskRequest, TaskState, WorkerStatus,
 };
 use ironic::prelude::*;
 use serde_json::json;
@@ -427,11 +427,36 @@ impl TaskService {
                 "cannot steer a task that has already terminated".into(),
             ));
         }
+        let effective_token = if let Some(provided) = dto.fencing_token {
+            if provided < task.fencing_token {
+                return Err(ServerError::Conflict(format!(
+                    "stale steering fencing token {} < active {}",
+                    provided.0, task.fencing_token.0
+                )));
+            }
+            provided
+        } else {
+            task.fencing_token
+        };
+        let kind = dto.kind.unwrap_or_default();
+        if kind == SteeringInterventionKind::FollowUpPrompt {
+            let _ = self
+                .queue_follow_up(
+                    actor,
+                    &task.session_id,
+                    &crate::modules::tasks::dto::FollowUpDto {
+                        content: dto.content.clone(),
+                    },
+                )
+                .await;
+        }
         let msg = SteeringMessage {
             message_id: uuid::Uuid::new_v4().to_string(),
             session_id: task.session_id.clone(),
             task_id: task.id.clone(),
             content: dto.content.clone(),
+            kind,
+            fencing_token: Some(effective_token),
             emitted_at_ms: now_ms(),
         };
         self.bus.0.publish_steering(&msg).await?;

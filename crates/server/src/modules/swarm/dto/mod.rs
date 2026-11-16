@@ -1,6 +1,6 @@
 //! Validated DTOs for swarm subagent handoffs, signed messaging, and blackboard entries.
 
-use agents_protocol::PermissionMask;
+use agents_protocol::{PermissionMask, SubagentLineage};
 use garde::Validate;
 use ironic::OpenApiSchema;
 use serde::Deserialize;
@@ -22,6 +22,17 @@ pub struct CreateHandoffDto {
     pub worktree_branch: Option<String>,
     #[garde(length(min = 1, max = 4096))]
     pub goal: String,
+    #[garde(skip)]
+    #[serde(default)]
+    pub lineage: Option<SubagentLineage>,
+}
+
+/// Request payload for mediated natural-language operator dialogue with a specific subagent.
+#[derive(Debug, Clone, Deserialize, Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SubagentChatDto {
+    #[garde(length(min = 1, max = 8192))]
+    pub message: String,
 }
 
 /// Request to dispatch a signed NATS swarm message or mediated user <-> subagent message.

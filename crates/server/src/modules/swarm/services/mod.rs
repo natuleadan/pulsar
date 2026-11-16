@@ -3,7 +3,9 @@
 
 use std::{sync::Arc, time::Duration};
 
-use agents_protocol::{SwarmMessage, SwarmTopic};
+use agents_protocol::{
+    PermissionMask, SubagentLineage, SwarmMessage, SwarmTopic, validate_subagent_spawn,
+};
 use ironic::prelude::*;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -22,7 +24,7 @@ use crate::{
         auth::{entities::AuthenticatedActor, services::StateStore},
         sessions::services::SessionService,
         swarm::{
-            dto::{CreateHandoffDto, PutBlackboardDto, SendSwarmMessageDto},
+            dto::{CreateHandoffDto, PutBlackboardDto, SendSwarmMessageDto, SubagentChatDto},
             entities::{MediatedSwarmMessage, SwarmHandoffEntity},
             repositories::SwarmStore,
         },
@@ -54,6 +56,39 @@ impl SwarmService {
         dto: &CreateHandoffDto,
     ) -> Result<SwarmHandoffEntity, ServerError> {
         let _ = self.sessions.get_owned(actor, session_id).await?;
+
+        let existing = self.store.0.list_handoffs(session_id).await?;
+        let active_count = existing.len();
+        let derived_lineage = if let Some(explicit) = &dto.lineage {
+            explicit.clone()
+        } else {
+            let mut call_path = Vec::new();
+            let mut curr = dto.parent_agent_id.clone();
+            call_path.push(curr.clone());
+            let mut depth = 0u8;
+            for _ in 0..8 {
+                if let Some(parent_h) = existing.iter().find(|h| h.child_agent_id == curr) {
+                    depth = depth.saturating_add(1);
+                    curr = parent_h.parent_agent_id.clone();
+                    call_path.insert(0, curr.clone());
+                } else {
+                    break;
+                }
+            }
+            SubagentLineage {
+                root_session_id: session_id.to_owned(),
+                parent_agent_id: Some(dto.parent_agent_id.clone()),
+                current_agent_id: dto.parent_agent_id.clone(),
+                depth,
+                call_path,
+            }
+        };
+
+        if let Err(inception_err) =
+            validate_subagent_spawn(&derived_lineage, &dto.child_agent_id, active_count, 100_000)
+        {
+            return Err(ServerError::Forbidden(inception_err.to_string()));
+        }
 
         let delegated_mask = match dto.parent_mask.narrow(&dto.requested_mask) {
             Ok(mask) => mask,
@@ -197,6 +232,28 @@ impl SwarmService {
             })
             .await;
         Ok(recorded)
+    }
+
+    /// Mediates a bidirectional natural-language message from an operator to a specific subagent.
+    pub async fn chat_with_subagent(
+        &self,
+        actor: &AuthenticatedActor,
+        session_id: &str,
+        subagent_id: &str,
+        dto: &SubagentChatDto,
+    ) -> Result<MediatedSwarmMessage, ServerError> {
+        let swarm_dto = SendSwarmMessageDto {
+            from_agent_id: format!("operator:{}", actor.user_id),
+            target_agent_id: Some(subagent_id.to_owned()),
+            permission_mask: PermissionMask::default(),
+            payload: json!({
+                "kind": "mediated_operator_chat",
+                "subagentId": subagent_id,
+                "message": dto.message,
+            }),
+            signature: None,
+        };
+        self.send_message(actor, session_id, &swarm_dto).await
     }
 
     /// Lists swarm coordination messages for an owned session.

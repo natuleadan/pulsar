@@ -1,9 +1,15 @@
 //! NATS JetStream control plane (`BOXER_TASKS`, `BOXER_STREAM`, `SWARM_EVENTS`)
 //! and in-memory message bus for deterministic tests.
 
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, VecDeque},
+    sync::Arc,
+};
 
-use agents_protocol::{EventEnvelope, FencingToken, SteeringMessage, SwarmMessage, TaskRequest};
+use agents_protocol::{
+    CodecId, EventEnvelope, EventFeedLane, FencingToken, SteeringMessage, StreamPayload,
+    SwarmMessage, TaskRequest,
+};
 use async_nats::jetstream::{self, stream};
 use futures_util::StreamExt;
 use tokio::sync::{Mutex, broadcast};
@@ -13,6 +19,91 @@ use crate::infra::{error::ServerError, state::BoxFuture};
 pub const STREAM_BOXER_TASKS: &str = "BOXER_TASKS";
 pub const STREAM_BOXER_STREAM: &str = "BOXER_STREAM";
 pub const STREAM_SWARM_EVENTS: &str = "SWARM_EVENTS";
+pub const RENDER_LANE_CAPACITY: usize = 4096;
+
+#[derive(Debug, Clone)]
+pub struct TwoLaneEventFeedBuffer {
+    capacity: usize,
+    control_lane: VecDeque<EventEnvelope>,
+    render_lane: VecDeque<EventEnvelope>,
+    dropped_render_events: u64,
+}
+
+impl Default for TwoLaneEventFeedBuffer {
+    fn default() -> Self {
+        Self::new(RENDER_LANE_CAPACITY)
+    }
+}
+
+impl TwoLaneEventFeedBuffer {
+    #[must_use]
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            capacity: capacity.max(1),
+            control_lane: VecDeque::new(),
+            render_lane: VecDeque::new(),
+            dropped_render_events: 0,
+        }
+    }
+
+    pub fn push(&mut self, envelope: EventEnvelope) -> Option<EventEnvelope> {
+        match envelope.payload.lane() {
+            EventFeedLane::Control => {
+                self.control_lane.push_back(envelope);
+                None
+            }
+            EventFeedLane::Render => {
+                let mut lagged_event = None;
+                if self.render_lane.len() >= self.capacity {
+                    let drop_count = (self.capacity / 2).max(1);
+                    let mut dropped = 0u64;
+                    for _ in 0..drop_count {
+                        if self.render_lane.pop_front().is_some() {
+                            dropped += 1;
+                        }
+                    }
+                    self.dropped_render_events += dropped;
+                    let lag_env = EventEnvelope {
+                        seq: envelope.seq,
+                        emitted_at_ms: envelope.emitted_at_ms,
+                        codec: CodecId::EventsV1,
+                        session_id: envelope.session_id.clone(),
+                        task_id: envelope.task_id.clone(),
+                        payload: StreamPayload::StreamLagged {
+                            dropped_render_events: dropped,
+                            buffer_capacity: self.capacity,
+                        },
+                    };
+                    self.control_lane.push_back(lag_env.clone());
+                    lagged_event = Some(lag_env);
+                }
+                self.render_lane.push_back(envelope);
+                lagged_event
+            }
+        }
+    }
+
+    pub fn pop_next(&mut self) -> Option<EventEnvelope> {
+        self.control_lane
+            .pop_front()
+            .or_else(|| self.render_lane.pop_front())
+    }
+
+    #[must_use]
+    pub fn control_len(&self) -> usize {
+        self.control_lane.len()
+    }
+
+    #[must_use]
+    pub fn render_len(&self) -> usize {
+        self.render_lane.len()
+    }
+
+    #[must_use]
+    pub fn total_dropped_render_events(&self) -> u64 {
+        self.dropped_render_events
+    }
+}
 
 /// Control-plane message bus linking Server, Boxer workers, and Swarm agents.
 pub trait MessageBus: Send + Sync + 'static {
@@ -117,7 +208,7 @@ impl NatsMessageBus {
         let mut map = self.channels.lock().await;
         let tx = map
             .entry(envelope.session_id.clone())
-            .or_insert_with(|| broadcast::channel(256).0);
+            .or_insert_with(|| broadcast::channel(RENDER_LANE_CAPACITY).0);
         let _ = tx.send(envelope.clone());
     }
 }
@@ -211,7 +302,7 @@ impl MessageBus for NatsMessageBus {
         Box::pin(async move {
             let mut map = self.channels.lock().await;
             map.entry(session_id.to_owned())
-                .or_insert_with(|| broadcast::channel(256).0)
+                .or_insert_with(|| broadcast::channel(RENDER_LANE_CAPACITY).0)
                 .subscribe()
         })
     }
@@ -311,7 +402,7 @@ impl MessageBus for InMemoryMessageBus {
             let tx = inner
                 .channels
                 .entry(envelope.session_id.clone())
-                .or_insert_with(|| broadcast::channel(256).0);
+                .or_insert_with(|| broadcast::channel(RENDER_LANE_CAPACITY).0);
             let _ = tx.send(envelope.clone());
             Ok(())
         })
@@ -336,7 +427,7 @@ impl MessageBus for InMemoryMessageBus {
             inner
                 .channels
                 .entry(session_id.to_owned())
-                .or_insert_with(|| broadcast::channel(256).0)
+                .or_insert_with(|| broadcast::channel(RENDER_LANE_CAPACITY).0)
                 .subscribe()
         })
     }
