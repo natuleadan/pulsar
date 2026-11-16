@@ -34,9 +34,7 @@ pub use config_hierarchy::{
     ConfigDiagnostic, ConfigDiagnosticSeverity, ConfigLayer, ConfigResolutionOutcome, ConfigScope,
     EffectiveSettings, resolve_settings_hierarchy, serialize_minimal_diff,
 };
-pub use dlq::{
-    DEFAULT_MAX_DELIVERY_ATTEMPTS, DeadLetterEntry, DlqDecision, PoisonMessageFilter,
-};
+pub use dlq::{DEFAULT_MAX_DELIVERY_ATTEMPTS, DeadLetterEntry, DlqDecision, PoisonMessageFilter};
 pub use error_taxonomy::{
     ClassifiedProviderError, ProviderErrorClass, classify_provider_error,
     compute_exponential_backoff_ms, scrub_sensitive_tokens,

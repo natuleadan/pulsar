@@ -2,9 +2,7 @@
 
 use std::time::Duration;
 
-use agents_protocol::{
-    DlqDecision, FencingToken, PoisonMessageFilter, StopReason, TaskState,
-};
+use agents_protocol::{DlqDecision, FencingToken, PoisonMessageFilter, StopReason, TaskState};
 use agents_server::{
     infra::{error::ServerError, state::now_ms},
     modules::tasks::{

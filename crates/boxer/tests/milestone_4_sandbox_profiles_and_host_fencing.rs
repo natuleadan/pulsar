@@ -24,7 +24,10 @@ fn test_sandbox_profile_vfs_escape_rejection() {
 
     // Absolute path traversal attempt
     let abs_attempt = resolve_confined_workdir(&ws_root, session_id, Some("/etc/shadow"));
-    assert!(matches!(abs_attempt, Err(BoxerError::IsolationViolation(_))));
+    assert!(matches!(
+        abs_attempt,
+        Err(BoxerError::IsolationViolation(_))
+    ));
 
     // Relative escape traversal attempt (../../)
     let escape_attempt = resolve_confined_workdir(&ws_root, session_id, Some("../../outside"));
@@ -35,7 +38,10 @@ fn test_sandbox_profile_vfs_escape_rejection() {
 
     // Malicious session ID with traversal
     let bad_session = resolve_confined_workdir(&ws_root, "../bad_session", Some("code"));
-    assert!(matches!(bad_session, Err(BoxerError::IsolationViolation(_))));
+    assert!(matches!(
+        bad_session,
+        Err(BoxerError::IsolationViolation(_))
+    ));
 
     let slash_session = resolve_confined_workdir(&ws_root, "bad/session", Some("code"));
     assert!(matches!(
@@ -117,7 +123,8 @@ fn test_host_mode_fencing_fails_closed() {
     assert!(confined_bad_token.warning_banner.is_none());
 
     // 4. Consent true and correct token: succeeds in unconfined mode with security warning
-    let allowed_unconfined = validate_hardened_host_mode(true, Some(HOST_UNCONFINED_ACK_VALUE)).unwrap();
+    let allowed_unconfined =
+        validate_hardened_host_mode(true, Some(HOST_UNCONFINED_ACK_VALUE)).unwrap();
     assert!(allowed_unconfined.allowed);
     assert!(!allowed_unconfined.sandboxed);
     assert!(allowed_unconfined.warning_banner.is_some());
@@ -125,7 +132,8 @@ fn test_host_mode_fencing_fails_closed() {
 
 #[test]
 fn test_scratch_cleanup_drop_guard() {
-    let scratch_path = std::env::temp_dir().join(format!("agents-test-scratch-{}", uuid::Uuid::new_v4()));
+    let scratch_path =
+        std::env::temp_dir().join(format!("agents-test-scratch-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&scratch_path).expect("create scratch dir");
     let test_file = scratch_path.join("artifact.log");
     std::fs::write(&test_file, b"ephemeral test output").expect("write test file");
