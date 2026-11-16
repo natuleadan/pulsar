@@ -116,7 +116,7 @@ if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "boxer" ]]; then
   check_cmd docker "Docker runtime"
 fi
 
-if command -v systemctl >/dev/null 2>&1 && [[ -d /run/systemd/system ]]; then
+if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running >/dev/null 2>&1; then
   if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "server" ]]; then
     if systemctl is-active --quiet agents-server.service; then
       pass "Service active: agents-server.service"
