@@ -166,3 +166,114 @@ async fn secrets_enforce_system_separation_non_readable_metadata_group_and_worke
         "worker-b must receive zero secrets from worker-a or grp-deploy"
     );
 }
+
+#[tokio::test]
+async fn universal_providers_discovery_fallback_chain_and_handshake_classification() {
+    let harness = build_test_harness(ServerConfig::for_tests()).await;
+    let (_, alice_jwt) = register_and_login(
+        &harness.router,
+        "alice-prov@example.com",
+        "password-alice-123",
+    )
+    .await;
+
+    let (fb_st, fb_body) = send_json(
+        &harness.router,
+        Method::POST,
+        "/api/v1/providers",
+        Some(&alice_jwt),
+        Some(json!({
+            "id": "backup-vllm",
+            "name": "Local vLLM Backup",
+            "kind": "vllm",
+            "baseUrl": "http://127.0.0.1:19999/v1",
+            "defaultModel": "qwen2.5-coder-7b",
+            "isDefault": false,
+            "enabled": true
+        })),
+    )
+    .await;
+    assert_eq!(fb_st, StatusCode::OK);
+    assert_eq!(fb_body["protocol"], "openai_compatible");
+
+    let (prim_st, prim_body) = send_json(
+        &harness.router,
+        Method::POST,
+        "/api/v1/providers",
+        Some(&alice_jwt),
+        Some(json!({
+            "id": "primary-anthropic",
+            "name": "Anthropic Claude",
+            "kind": "anthropic",
+            "baseUrl": "http://127.0.0.1:19998",
+            "defaultModel": "claude-3-7-sonnet",
+            "fallbackProviderId": "backup-vllm",
+            "apiKey": "sk-ant-secret-key-99999",
+            "isDefault": true,
+            "enabled": true
+        })),
+    )
+    .await;
+    assert_eq!(prim_st, StatusCode::OK);
+    assert_eq!(prim_body["protocol"], "anthropic_messages");
+    assert_eq!(prim_body["fallbackProviderId"], "backup-vllm");
+    assert_eq!(prim_body["hasApiKey"], true);
+    assert!(!prim_body.to_string().contains("sk-ant-secret-key-99999"));
+
+    let (models_st, models_body) = send_json(
+        &harness.router,
+        Method::GET,
+        "/api/v1/providers/primary-anthropic/models",
+        Some(&alice_jwt),
+        None,
+    )
+    .await;
+    assert_eq!(models_st, StatusCode::OK);
+    assert_eq!(models_body["allowFreeformOverride"], true);
+    assert_eq!(models_body["models"][0]["id"], "claude-3-7-sonnet");
+
+    let (models_cached_st, models_cached_body) = send_json(
+        &harness.router,
+        Method::GET,
+        "/api/v1/providers/primary-anthropic/models",
+        Some(&alice_jwt),
+        None,
+    )
+    .await;
+    assert_eq!(models_cached_st, StatusCode::OK);
+    assert_eq!(models_cached_body["cached"], true);
+
+    let (test_st, test_body) = send_json(
+        &harness.router,
+        Method::POST,
+        "/api/v1/providers/primary-anthropic/test",
+        Some(&alice_jwt),
+        None,
+    )
+    .await;
+    assert_eq!(test_st, StatusCode::OK);
+    assert_eq!(test_body["reachable"], false);
+    assert!(test_body["errorClassification"].is_object());
+
+    let prov_svc = harness
+        .app
+        .container()
+        .resolve::<agents_server::modules::providers::ProviderService>()
+        .await
+        .expect("resolve ProviderService");
+    let resolved = prov_svc
+        .resolve_active_endpoint()
+        .await
+        .expect("resolve active")
+        .expect("active endpoint");
+    assert_eq!(resolved.model, "claude-3-7-sonnet");
+    assert_eq!(
+        resolved.fallback_provider_id.as_deref(),
+        Some("backup-vllm")
+    );
+    assert_eq!(
+        resolved.fallback_base_url.as_deref(),
+        Some("http://127.0.0.1:19999/v1")
+    );
+    assert_eq!(resolved.fallback_model.as_deref(), Some("qwen2.5-coder-7b"));
+}

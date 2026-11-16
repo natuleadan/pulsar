@@ -5,10 +5,11 @@ use serde_json::{Value, json};
 
 use crate::{
     AgentLifecycleMode, AgentLifecyclePolicy, ApiKeyMetadata, ApiKeyScope, BoxerNodeAnnouncement,
-    CursorPage, EventEnvelope, ExecOptions, FencingToken, FollowUpMessage, InteractionMode,
-    IsolationKind, NodeStatus, PermissionMask, RuntimeKind, SandboxProfile, SetupMode,
-    SteeringMessage, StopReason, TaskLease, TaskResult, TaskState, TokenPair, TraefikPreviewRoute,
-    TriggerKind, WorkflowDag, WorkflowEdge, WorkflowNode,
+    ClassifiedProviderError, CursorPage, DiscoveredModel, EventEnvelope, ExecOptions, FencingToken,
+    FollowUpMessage, InteractionMode, IsolationKind, NodeStatus, PermissionMask,
+    ProviderErrorClass, ProviderProtocol, RuntimeKind, SandboxProfile, SetupMode, SteeringMessage,
+    StopReason, TaskLease, TaskResult, TaskState, TokenPair, ToolDecisionKind, ToolDecisionVerdict,
+    ToolPolicyRule, TraefikPreviewRoute, TriggerKind, WorkflowDag, WorkflowEdge, WorkflowNode,
 };
 
 impl OpenApiSchema for ApiKeyScope {
@@ -421,6 +422,60 @@ impl OpenApiSchema for AgentLifecyclePolicy {
                     "example": 3600
                 }
             }
+        })
+    }
+}
+
+impl OpenApiSchema for ProviderProtocol {
+    fn openapi_schema() -> Value {
+        json!({ "type": "string", "title": "ProviderProtocol", "enum": ["openai_compatible", "anthropic_messages", "gemini_generate_content"], "example": "openai_compatible" })
+    }
+}
+
+impl OpenApiSchema for DiscoveredModel {
+    fn openapi_schema() -> Value {
+        json!({
+            "type": "object", "title": "DiscoveredModel", "required": ["id", "ownedBy"],
+            "properties": { "id": { "type": "string" }, "ownedBy": { "type": "string" }, "contextWindow": { "type": "integer", "nullable": true } }
+        })
+    }
+}
+
+impl OpenApiSchema for ToolDecisionKind {
+    fn openapi_schema() -> Value {
+        json!({ "type": "string", "title": "ToolDecisionKind", "enum": ["allow", "ask", "cancel", "deny"], "example": "allow" })
+    }
+}
+
+impl OpenApiSchema for ToolPolicyRule {
+    fn openapi_schema() -> Value {
+        json!({
+            "type": "object", "title": "ToolPolicyRule", "required": ["ruleId", "toolPattern", "decision", "reason"],
+            "properties": { "ruleId": { "type": "string" }, "toolPattern": { "type": "string" }, "decision": ToolDecisionKind::openapi_schema(), "reason": { "type": "string" } }
+        })
+    }
+}
+
+impl OpenApiSchema for ToolDecisionVerdict {
+    fn openapi_schema() -> Value {
+        json!({
+            "type": "object", "title": "ToolDecisionVerdict", "required": ["toolName", "decision", "winningRuleId", "reason", "evaluatedRules"],
+            "properties": { "toolName": { "type": "string" }, "decision": ToolDecisionKind::openapi_schema(), "winningRuleId": { "type": "string" }, "reason": { "type": "string" }, "evaluatedRules": { "type": "integer" } }
+        })
+    }
+}
+
+impl OpenApiSchema for ProviderErrorClass {
+    fn openapi_schema() -> Value {
+        json!({ "type": "string", "title": "ProviderErrorClass", "enum": ["non_retryable_client", "retryable_transient", "terminal_quota_exhausted"], "example": "retryable_transient" })
+    }
+}
+
+impl OpenApiSchema for ClassifiedProviderError {
+    fn openapi_schema() -> Value {
+        json!({
+            "type": "object", "title": "ClassifiedProviderError", "required": ["class", "sanitizedMessage", "shouldDegradeToFallback"],
+            "properties": { "statusCode": { "type": "integer", "nullable": true }, "class": ProviderErrorClass::openapi_schema(), "sanitizedMessage": { "type": "string" }, "recommendedBackoffMs": { "type": "integer", "nullable": true }, "shouldDegradeToFallback": { "type": "boolean" } }
         })
     }
 }

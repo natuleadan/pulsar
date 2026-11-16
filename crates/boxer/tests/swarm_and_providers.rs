@@ -48,6 +48,7 @@ fn provider_registry_and_swarm_asi05_asi07_and_worktree_drop_guard() -> TestResu
             kind,
             base_url: "http://127.0.0.1:8080".to_owned(),
             model: "test-model".to_owned(),
+            fallback_endpoint_id: None,
             api_key_env: None,
             default_headers: Default::default(),
         });

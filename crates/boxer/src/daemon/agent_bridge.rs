@@ -143,6 +143,7 @@ fn detect_llm_endpoint() -> Option<ProviderEndpointConfig> {
             base_url: std::env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "https://api.openai.com/v1".to_owned()),
             model: std::env::var("AGENTS_LLM_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_owned()),
+            fallback_endpoint_id: None,
             api_key_env: Some("OPENAI_API_KEY".to_owned()),
             default_headers: HashMap::new(),
         });
@@ -157,6 +158,7 @@ fn detect_llm_endpoint() -> Option<ProviderEndpointConfig> {
                 .unwrap_or_else(|_| "https://api.anthropic.com".to_owned()),
             model: std::env::var("AGENTS_LLM_MODEL")
                 .unwrap_or_else(|_| "claude-3-5-sonnet-latest".to_owned()),
+            fallback_endpoint_id: None,
             api_key_env: Some("ANTHROPIC_API_KEY".to_owned()),
             default_headers: HashMap::new(),
         });
@@ -169,6 +171,7 @@ fn detect_llm_endpoint() -> Option<ProviderEndpointConfig> {
             kind: ProviderKind::OpenAi,
             base_url,
             model: std::env::var("AGENTS_LLM_MODEL").unwrap_or_else(|_| "llama3.2".to_owned()),
+            fallback_endpoint_id: None,
             api_key_env: std::env::var("AGENTS_LLM_API_KEY_ENV").ok(),
             default_headers: HashMap::new(),
         });
@@ -210,9 +213,10 @@ pub async fn try_run_agent_engine(
         return None;
     }
     let endpoint = if let Some(spec) = &req.inference {
-        let kind = match spec.kind.trim().to_ascii_lowercase().as_str() {
-            "anthropic" => ProviderKind::Anthropic,
-            _ => ProviderKind::OpenAi,
+        let kind = if spec.kind.trim().eq_ignore_ascii_case("anthropic") {
+            ProviderKind::Anthropic
+        } else {
+            ProviderKind::OpenAi
         };
         let mut default_headers = HashMap::new();
         if let Some(key) = spec
@@ -221,13 +225,10 @@ pub async fn try_run_agent_engine(
             .map(str::trim)
             .filter(|s| !s.is_empty())
         {
-            match kind {
-                ProviderKind::Anthropic => {
-                    default_headers.insert("x-api-key".to_owned(), key.to_owned());
-                }
-                _ => {
-                    default_headers.insert("authorization".to_owned(), format!("Bearer {key}"));
-                }
+            if kind == ProviderKind::Anthropic {
+                default_headers.insert("x-api-key".to_owned(), key.to_owned());
+            } else {
+                default_headers.insert("authorization".to_owned(), format!("Bearer {key}"));
             }
         }
         ProviderEndpointConfig {
@@ -235,6 +236,10 @@ pub async fn try_run_agent_engine(
             kind,
             base_url: spec.base_url.clone(),
             model: spec.model.clone(),
+            fallback_endpoint_id: spec
+                .fallback_base_url
+                .as_ref()
+                .map(|_| "fallback".to_owned()),
             api_key_env: None,
             default_headers,
         }
@@ -244,6 +249,19 @@ pub async fn try_run_agent_engine(
 
     let mut registry = ProviderRegistry::new();
     let endpoint_id = endpoint.id.clone();
+    if let Some(spec) = &req.inference
+        && let (Some(fb_url), Some(fb_model)) = (&spec.fallback_base_url, &spec.fallback_model)
+    {
+        registry.register(ProviderEndpointConfig {
+            id: "fallback".to_owned(),
+            kind: ProviderKind::OpenAi,
+            base_url: fb_url.clone(),
+            model: fb_model.clone(),
+            fallback_endpoint_id: None,
+            api_key_env: None,
+            default_headers: HashMap::new(),
+        });
+    }
     registry.register(endpoint);
     let model = Arc::new(HttpProviderClient::new(Arc::new(registry)));
     let mut runtime = NativeAgentRuntime::new(model, Arc::new(DefaultLoopHooks));
@@ -363,11 +381,6 @@ impl BoxerDaemon {
         let _ = self.bus.publish_stream_event(&env).await;
     }
 
-    /// Announces this Boxer worker onto the private VLAN discovery bus (`boxer.nodes.*`).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`BoxerError::Bus`] if the bus publication fails.
     pub async fn announce_node(
         &self,
         vlan_ip: &str,
@@ -392,16 +405,10 @@ impl BoxerDaemon {
         Ok(announcement)
     }
 
-    /// Publishes or revokes a distributed preview route sync message for Traefik HTTP discovery.
-    ///
-    /// # Errors
-    ///
-    /// Returns [`BoxerError::Bus`] if synchronization fails.
     pub async fn sync_preview_route(&self, sync: &PreviewRouteSync) -> Result<(), BoxerError> {
         self.bus.publish_preview_sync(sync).await
     }
 
-    /// Builds and verifies a signed P2P swarm message using the node cluster secret.
     pub fn build_verified_swarm_message(
         &self,
         session_id: &str,
@@ -422,7 +429,6 @@ impl BoxerDaemon {
     }
 }
 
-/// Uploads packaged task artifacts to the control-plane `/api/v1/tasks/:id/artifacts/worker` endpoint.
 pub async fn upload_packaged_artifacts(
     config: &BoxerConfig,
     task_id: &str,

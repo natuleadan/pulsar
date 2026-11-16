@@ -3,7 +3,9 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use agents_protocol::StopReason;
+use agents_protocol::{
+    ProviderErrorClass, StopReason, classify_provider_error, scrub_sensitive_tokens,
+};
 use bytes::Bytes;
 use http::{Request, header};
 use http_body_util::{BodyExt, Full};
@@ -47,7 +49,6 @@ impl ProviderKind {
     }
 }
 
-/// Configuration for a named provider endpoint (`provider_endpoint:<id>`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProviderEndpointConfig {
@@ -55,6 +56,8 @@ pub struct ProviderEndpointConfig {
     pub kind: ProviderKind,
     pub base_url: String,
     pub model: String,
+    #[serde(default)]
+    pub fallback_endpoint_id: Option<String>,
     #[serde(default)]
     pub api_key_env: Option<String>,
     #[serde(default)]
@@ -191,6 +194,80 @@ impl HttpProviderClient {
             | ProviderKind::Custom(_) => format!("{base}/v1/chat/completions"),
         }
     }
+
+    async fn execute_once(
+        &self,
+        cfg: &ProviderEndpointConfig,
+        req: &ModelTurnRequest,
+    ) -> Result<ModelTurnResponse, (Option<u16>, String)> {
+        let url = Self::target_url(cfg);
+        let payload = Self::build_provider_payload(cfg, req);
+        let body_bytes = serde_json::to_vec(&payload)
+            .map_err(|e| (None, format!("provider json error: {e}")))?;
+
+        let mut builder = Request::post(&url).header(header::CONTENT_TYPE, "application/json");
+        for (k, v) in &cfg.default_headers {
+            builder = builder.header(k.as_str(), v.as_str());
+        }
+        if let Some(env_name) = &cfg.api_key_env
+            && let Ok(secret) = std::env::var(env_name)
+            && !secret.trim().is_empty()
+        {
+            match cfg.kind {
+                ProviderKind::Anthropic => {
+                    builder = builder.header("x-api-key", secret);
+                }
+                _ => {
+                    builder = builder.header(header::AUTHORIZATION, format!("Bearer {secret}"));
+                }
+            }
+        }
+
+        let http_req = builder
+            .body(Full::new(Bytes::from(body_bytes)))
+            .map_err(|e| (None, format!("invalid provider uri: {e}")))?;
+
+        let resp = self
+            .http
+            .request(http_req)
+            .await
+            .map_err(|e| (None, format!("provider request failed: {e}")))?;
+        let status = resp.status();
+        let raw = resp
+            .into_body()
+            .collect()
+            .await
+            .map_err(|e| (None, format!("provider read error: {e}")))?
+            .to_bytes();
+
+        if !status.is_success() {
+            return Err((
+                Some(status.as_u16()),
+                String::from_utf8_lossy(&raw).into_owned(),
+            ));
+        }
+
+        let parsed: Value = serde_json::from_slice(&raw)
+            .map_err(|e| (Some(200), format!("invalid provider json: {e}")))?;
+
+        let assistant_text = parsed
+            .pointer("/choices/0/message/content")
+            .or_else(|| parsed.pointer("/message/content"))
+            .or_else(|| parsed.pointer("/content/0/text"))
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned();
+
+        Ok(ModelTurnResponse {
+            assistant_text,
+            tool_calls: Vec::new(),
+            stop_reason: StopReason::EndTurn,
+            usage_tokens: parsed
+                .pointer("/usage/total_tokens")
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
+        })
+    }
 }
 
 impl ModelClient for HttpProviderClient {
@@ -199,7 +276,7 @@ impl ModelClient for HttpProviderClient {
         req: ModelTurnRequest,
     ) -> BoxFuture<'a, Result<ModelTurnResponse, BoxerError>> {
         Box::pin(async move {
-            let cfg = self
+            let primary_cfg = self
                 .registry
                 .resolve(&req.endpoint_id)
                 .ok_or_else(|| {
@@ -210,72 +287,55 @@ impl ModelClient for HttpProviderClient {
                 })?
                 .clone();
 
-            let url = Self::target_url(&cfg);
-            let payload = Self::build_provider_payload(&cfg, &req);
-            let body_bytes = serde_json::to_vec(&payload)
-                .map_err(|e| BoxerError::ExecutionFailed(format!("provider json error: {e}")))?;
+            let max_retries = 2_u32;
+            let mut last_error_msg = String::new();
+            let mut should_try_fallback = false;
 
-            let mut builder = Request::post(&url).header(header::CONTENT_TYPE, "application/json");
-            for (k, v) in &cfg.default_headers {
-                builder = builder.header(k.as_str(), v.as_str());
-            }
-            if let Some(env_name) = &cfg.api_key_env
-                && let Ok(secret) = std::env::var(env_name)
-                && !secret.trim().is_empty()
-            {
-                match cfg.kind {
-                    ProviderKind::Anthropic => {
-                        builder = builder.header("x-api-key", secret);
-                    }
-                    _ => {
-                        builder = builder.header(header::AUTHORIZATION, format!("Bearer {secret}"));
+            for attempt in 0..=max_retries {
+                match self.execute_once(&primary_cfg, &req).await {
+                    Ok(res) => return Ok(res),
+                    Err((status_code, raw_err)) => {
+                        let classified =
+                            classify_provider_error(status_code, &raw_err, attempt, max_retries);
+                        last_error_msg = match status_code {
+                            Some(code) => {
+                                format!("provider HTTP {code}: {}", classified.sanitized_message)
+                            }
+                            None => scrub_sensitive_tokens(&raw_err),
+                        };
+                        match classified.class {
+                            ProviderErrorClass::NonRetryableClient => {
+                                return Err(BoxerError::ExecutionFailed(last_error_msg));
+                            }
+                            ProviderErrorClass::TerminalQuotaExhausted => {
+                                should_try_fallback = true;
+                                break;
+                            }
+                            ProviderErrorClass::RetryableTransient => {
+                                if let Some(backoff_ms) = classified.recommended_backoff_ms {
+                                    tokio::time::sleep(std::time::Duration::from_millis(
+                                        backoff_ms.min(50),
+                                    ))
+                                    .await;
+                                } else {
+                                    should_try_fallback = true;
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
             }
 
-            let http_req = builder
-                .body(Full::new(Bytes::from(body_bytes)))
-                .map_err(|e| BoxerError::ExecutionFailed(format!("invalid provider uri: {e}")))?;
-
-            let resp = self.http.request(http_req).await.map_err(|e| {
-                BoxerError::ExecutionFailed(format!("provider request failed: {e}"))
-            })?;
-            let status = resp.status();
-            let raw = resp
-                .into_body()
-                .collect()
-                .await
-                .map_err(|e| BoxerError::ExecutionFailed(format!("provider read error: {e}")))?
-                .to_bytes();
-
-            if !status.is_success() {
-                return Err(BoxerError::ExecutionFailed(format!(
-                    "provider HTTP {}: {}",
-                    status.as_u16(),
-                    String::from_utf8_lossy(&raw)
-                )));
+            if should_try_fallback
+                && let Some(fb_id) = &primary_cfg.fallback_endpoint_id
+                && let Some(fb_cfg) = self.registry.resolve(fb_id).cloned()
+                && let Ok(res) = self.execute_once(&fb_cfg, &req).await
+            {
+                return Ok(res);
             }
 
-            let parsed: Value = serde_json::from_slice(&raw)
-                .map_err(|e| BoxerError::ExecutionFailed(format!("invalid provider json: {e}")))?;
-
-            let assistant_text = parsed
-                .pointer("/choices/0/message/content")
-                .or_else(|| parsed.pointer("/message/content"))
-                .or_else(|| parsed.pointer("/content/0/text"))
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_owned();
-
-            Ok(ModelTurnResponse {
-                assistant_text,
-                tool_calls: Vec::new(),
-                stop_reason: StopReason::EndTurn,
-                usage_tokens: parsed
-                    .pointer("/usage/total_tokens")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0),
-            })
+            Err(BoxerError::ExecutionFailed(last_error_msg))
         })
     }
 }

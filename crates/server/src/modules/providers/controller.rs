@@ -17,7 +17,10 @@ use crate::{
         },
         providers::{
             dto::UpsertProviderDto,
-            entities::{InferenceProviderEntity, ProviderActionResponse},
+            entities::{
+                InferenceProviderEntity, ProviderActionResponse, ProviderHandshakeResponse,
+                ProviderModelsCatalogResponse,
+            },
             services::ProviderService,
         },
     },
@@ -103,6 +106,7 @@ impl ProvidersController {
     )]
     #[resp(200, "Provider deleted", json = ProviderActionResponse)]
     #[resp(404, "Provider not found", json = ErrorResponse)]
+    #[resp(409, "Cannot delete last active provider", json = ErrorResponse)]
     async fn delete_provider(
         &self,
         #[decorator(CurrentActor)] actor: AuthenticatedActor,
@@ -111,5 +115,43 @@ impl ProvidersController {
         require_scope(&actor, ApiKeyScope::Write)?;
         self.service.delete(&id).await?;
         Ok(Json(ProviderActionResponse { ok: true, id }))
+    }
+
+    #[get("/{id}/models")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Read))]
+    #[interceptor(PerRouteTimeoutInterceptor::secs(5))]
+    #[api(
+        summary = "Dynamically discover available models from provider upstream GET /v1/models",
+        tag = "Providers",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Discovered models catalog", json = ProviderModelsCatalogResponse)]
+    #[resp(404, "Provider not found", json = ErrorResponse)]
+    async fn discover_models(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+    ) -> Result<Json<ProviderModelsCatalogResponse>, HttpError> {
+        require_scope(&actor, ApiKeyScope::Read)?;
+        Ok(Json(self.service.discover_models(&id).await?))
+    }
+
+    #[post("/{id}/test")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[interceptor(PerRouteTimeoutInterceptor::secs(5))]
+    #[api(
+        summary = "Execute a 3-second handshake test against the upstream provider and classify errors",
+        tag = "Providers",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Handshake test result", json = ProviderHandshakeResponse)]
+    #[resp(404, "Provider not found", json = ErrorResponse)]
+    async fn test_provider(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] id: String,
+    ) -> Result<Json<ProviderHandshakeResponse>, HttpError> {
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(self.service.test_handshake(&id).await?))
     }
 }

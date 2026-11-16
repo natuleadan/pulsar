@@ -170,6 +170,12 @@ pub struct InferenceEndpointSpec {
     pub model: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_provider_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_base_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fallback_model: Option<String>,
 }
 
 impl std::fmt::Debug for InferenceEndpointSpec {
@@ -179,6 +185,9 @@ impl std::fmt::Debug for InferenceEndpointSpec {
             .field("base_url", &self.base_url)
             .field("model", &self.model)
             .field("api_key", &self.api_key.as_ref().map(|_| "[REDACTED]"))
+            .field("fallback_provider_id", &self.fallback_provider_id)
+            .field("fallback_base_url", &self.fallback_base_url)
+            .field("fallback_model", &self.fallback_model)
             .finish()
     }
 }

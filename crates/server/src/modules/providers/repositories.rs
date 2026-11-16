@@ -15,6 +15,7 @@ pub struct StoredProvider {
     pub kind: String,
     pub base_url: String,
     pub default_model: String,
+    pub fallback_provider_id: Option<String>,
     pub encrypted_api_key: Option<String>,
     pub key_fingerprint: Option<String>,
     pub is_default: bool,
@@ -24,6 +25,7 @@ pub struct StoredProvider {
 
 pub trait ProviderRepository: Send + Sync {
     fn list(&self) -> BoxFuture<'_, Result<Vec<StoredProvider>, ServerError>>;
+    fn get_by_id(&self, id: &str) -> BoxFuture<'_, Result<Option<StoredProvider>, ServerError>>;
     fn get_default(&self) -> BoxFuture<'_, Result<Option<StoredProvider>, ServerError>>;
     fn upsert(&self, item: StoredProvider) -> BoxFuture<'_, Result<StoredProvider, ServerError>>;
     fn set_default(&self, id: &str) -> BoxFuture<'_, Result<bool, ServerError>>;
@@ -51,6 +53,11 @@ impl ProviderRepository for InMemoryProviderRepository {
             out.sort_by(|a, b| b.is_default.cmp(&a.is_default).then(a.id.cmp(&b.id)));
             Ok(out)
         })
+    }
+
+    fn get_by_id(&self, id: &str) -> BoxFuture<'_, Result<Option<StoredProvider>, ServerError>> {
+        let id = id.to_owned();
+        Box::pin(async move { Ok(self.items.read().await.get(&id).cloned()) })
     }
 
     fn get_default(&self) -> BoxFuture<'_, Result<Option<StoredProvider>, ServerError>> {
@@ -116,7 +123,7 @@ impl ProviderRepository for PgProviderRepository {
     fn list(&self) -> BoxFuture<'_, Result<Vec<StoredProvider>, ServerError>> {
         Box::pin(async move {
             sqlx::query_as::<_, StoredProvider>(
-                "SELECT id, name, kind, base_url, default_model, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at::text AS updated_at FROM inference_providers ORDER BY is_default DESC, id ASC",
+                "SELECT id, name, kind, base_url, default_model, fallback_provider_id, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at::text AS updated_at FROM inference_providers ORDER BY is_default DESC, id ASC",
             )
             .fetch_all(&self.pool)
             .await
@@ -124,10 +131,23 @@ impl ProviderRepository for PgProviderRepository {
         })
     }
 
+    fn get_by_id(&self, id: &str) -> BoxFuture<'_, Result<Option<StoredProvider>, ServerError>> {
+        let id = id.to_owned();
+        Box::pin(async move {
+            sqlx::query_as::<_, StoredProvider>(
+                "SELECT id, name, kind, base_url, default_model, fallback_provider_id, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at::text AS updated_at FROM inference_providers WHERE id = $1 LIMIT 1",
+            )
+            .bind(&id)
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(|e| ServerError::Internal(format!("get provider by id failed: {e}")))
+        })
+    }
+
     fn get_default(&self) -> BoxFuture<'_, Result<Option<StoredProvider>, ServerError>> {
         Box::pin(async move {
             sqlx::query_as::<_, StoredProvider>(
-                "SELECT id, name, kind, base_url, default_model, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at::text AS updated_at FROM inference_providers WHERE enabled = TRUE ORDER BY is_default DESC, updated_at DESC LIMIT 1",
+                "SELECT id, name, kind, base_url, default_model, fallback_provider_id, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at::text AS updated_at FROM inference_providers WHERE enabled = TRUE ORDER BY is_default DESC, updated_at DESC LIMIT 1",
             )
             .fetch_optional(&self.pool)
             .await
@@ -150,19 +170,20 @@ impl ProviderRepository for PgProviderRepository {
             }
             let row = sqlx::query_as::<_, StoredProvider>(
                 r"
-                INSERT INTO inference_providers (id, name, kind, base_url, default_model, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+                INSERT INTO inference_providers (id, name, kind, base_url, default_model, fallback_provider_id, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
                 ON CONFLICT (id) DO UPDATE SET
                     name = EXCLUDED.name,
                     kind = EXCLUDED.kind,
                     base_url = EXCLUDED.base_url,
                     default_model = EXCLUDED.default_model,
+                    fallback_provider_id = EXCLUDED.fallback_provider_id,
                     encrypted_api_key = COALESCE(EXCLUDED.encrypted_api_key, inference_providers.encrypted_api_key),
                     key_fingerprint = COALESCE(EXCLUDED.key_fingerprint, inference_providers.key_fingerprint),
                     is_default = EXCLUDED.is_default,
                     enabled = EXCLUDED.enabled,
                     updated_at = NOW()
-                RETURNING id, name, kind, base_url, default_model, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at::text AS updated_at
+                RETURNING id, name, kind, base_url, default_model, fallback_provider_id, encrypted_api_key, key_fingerprint, is_default, enabled, updated_at::text AS updated_at
                 ",
             )
             .bind(&item.id)
@@ -170,6 +191,7 @@ impl ProviderRepository for PgProviderRepository {
             .bind(&item.kind)
             .bind(&item.base_url)
             .bind(&item.default_model)
+            .bind(&item.fallback_provider_id)
             .bind(&item.encrypted_api_key)
             .bind(&item.key_fingerprint)
             .bind(item.is_default)
