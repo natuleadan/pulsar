@@ -83,7 +83,11 @@ pub const fn is_valid_transition(from: &TaskState, to: &TaskState) -> bool {
             )
             | (
                 TaskState::Running,
-                TaskState::Blocked | TaskState::Done | TaskState::Failed | TaskState::Cancelled,
+                TaskState::Running
+                    | TaskState::Blocked
+                    | TaskState::Done
+                    | TaskState::Failed
+                    | TaskState::Cancelled,
             )
             | (
                 TaskState::Blocked,

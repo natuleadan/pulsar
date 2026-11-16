@@ -6,13 +6,6 @@ use std::{collections::HashMap, sync::Arc};
 use agents_protocol::{
     ProviderErrorClass, StopReason, classify_provider_error, scrub_sensitive_tokens,
 };
-use bytes::Bytes;
-use http::{Request, header};
-use http_body_util::{BodyExt, Full};
-use hyper_util::{
-    client::legacy::{Client, connect::HttpConnector},
-    rt::TokioExecutor,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tokio::sync::Mutex;
@@ -144,15 +137,16 @@ pub trait ModelClient: Send + Sync + 'static {
 #[derive(Clone)]
 pub struct HttpProviderClient {
     registry: Arc<ProviderRegistry>,
-    http: Client<HttpConnector, Full<Bytes>>,
+    http: reqwest::Client,
 }
 
 impl HttpProviderClient {
     #[must_use]
     pub fn new(registry: Arc<ProviderRegistry>) -> Self {
-        let mut connector = HttpConnector::new();
-        connector.enforce_http(false);
-        let http = Client::builder(TokioExecutor::new()).build(connector);
+        let http = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(60))
+            .build()
+            .unwrap_or_default();
         Self { registry, http }
     }
 
@@ -191,7 +185,13 @@ impl HttpProviderClient {
             ProviderKind::LmStudio
             | ProviderKind::OpenAi
             | ProviderKind::DeepInfra
-            | ProviderKind::Custom(_) => format!("{base}/v1/chat/completions"),
+            | ProviderKind::Custom(_) => {
+                if base.ends_with("/v1") || base.ends_with("/openai") {
+                    format!("{base}/chat/completions")
+                } else {
+                    format!("{base}/v1/chat/completions")
+                }
+            }
         }
     }
 
@@ -202,12 +202,10 @@ impl HttpProviderClient {
     ) -> Result<ModelTurnResponse, (Option<u16>, String)> {
         let url = Self::target_url(cfg);
         let payload = Self::build_provider_payload(cfg, req);
-        let body_bytes = serde_json::to_vec(&payload)
-            .map_err(|e| (None, format!("provider json error: {e}")))?;
 
-        let mut builder = Request::post(&url).header(header::CONTENT_TYPE, "application/json");
+        let mut req_builder = self.http.post(&url).json(&payload);
         for (k, v) in &cfg.default_headers {
-            builder = builder.header(k.as_str(), v.as_str());
+            req_builder = req_builder.header(k.as_str(), v.as_str());
         }
         if let Some(env_name) = &cfg.api_key_env
             && let Ok(secret) = std::env::var(env_name)
@@ -215,30 +213,23 @@ impl HttpProviderClient {
         {
             match cfg.kind {
                 ProviderKind::Anthropic => {
-                    builder = builder.header("x-api-key", secret);
+                    req_builder = req_builder.header("x-api-key", secret);
                 }
                 _ => {
-                    builder = builder.header(header::AUTHORIZATION, format!("Bearer {secret}"));
+                    req_builder = req_builder.bearer_auth(secret);
                 }
             }
         }
 
-        let http_req = builder
-            .body(Full::new(Bytes::from(body_bytes)))
-            .map_err(|e| (None, format!("invalid provider uri: {e}")))?;
-
-        let resp = self
-            .http
-            .request(http_req)
+        let resp = req_builder
+            .send()
             .await
             .map_err(|e| (None, format!("provider request failed: {e}")))?;
         let status = resp.status();
         let raw = resp
-            .into_body()
-            .collect()
+            .bytes()
             .await
-            .map_err(|e| (None, format!("provider read error: {e}")))?
-            .to_bytes();
+            .map_err(|e| (None, format!("provider read error: {e}")))?;
 
         if !status.is_success() {
             return Err((
