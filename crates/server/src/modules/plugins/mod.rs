@@ -2,6 +2,9 @@
 //!
 //! Handles registration, verification, permissions enforcement, and discovery of plugins.
 
+pub mod hooks;
+pub mod instincts;
+
 use crate::infra::error::ServerError;
 use agents_protocol::{AgentCard, AgentCardEndpoints, PluginManifest, PluginToolDefinition};
 use std::collections::HashMap;

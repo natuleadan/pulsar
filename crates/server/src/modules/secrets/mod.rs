@@ -3,6 +3,7 @@
 pub mod controller;
 pub mod dto;
 pub mod entities;
+pub mod profiles;
 pub mod repositories;
 pub mod services;
 
