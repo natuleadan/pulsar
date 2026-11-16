@@ -71,6 +71,7 @@ use crate::{
             SessionsModule,
             repositories::{InMemorySessionRepository, PgSessionRepository, SessionStore},
         },
+        skills::{SkillStore, SkillsModule},
         swarm::{
             SwarmModule,
             repositories::{InMemorySwarmRepository, PgSwarmRepository, SwarmStore},
@@ -119,6 +120,7 @@ impl Module for InfraModule {
             .provider(ProviderDefinition::value(A2aTaskStore::default()))
             .provider(ProviderDefinition::value(ProviderStore::default()))
             .provider(ProviderDefinition::value(SecretStore::default()))
+            .provider(ProviderDefinition::value(SkillStore::default()))
             .export::<ServerConfig>()
             .export::<AppCache>()
             .export::<AppEventBus>()
@@ -142,6 +144,7 @@ impl Module for InfraModule {
             .export::<A2aTaskStore>()
             .export::<ProviderStore>()
             .export::<SecretStore>()
+            .export::<SkillStore>()
             .lifecycle(
                 LifecycleDefinition::builder::<SecurityLifecycleHook>()
                     .guard_denied()
@@ -176,6 +179,7 @@ impl Module for InfraModule {
     ProvidersModule,
     SecretsModule,
     WorkgroupsModule,
+    SkillsModule,
 ])]
 pub struct AppModule;
 
@@ -458,31 +462,11 @@ pub async fn build_application(
         let _ = enriched_openapi_cell.set(enriched_json);
     }
 
-    let auth = app
-        .container()
-        .resolve::<AuthService>()
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
-    let gateway = app
-        .container()
-        .resolve::<GatewayService>()
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
-    let mcp = app
-        .container()
-        .resolve::<McpHostService>()
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
-    let nodes = app
-        .container()
-        .resolve::<NodeRegistryService>()
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
-    let providers = app
-        .container()
-        .resolve::<ProviderService>()
-        .await
-        .map_err(|e| ServerError::Internal(e.to_string()))?;
+    let auth = resolve::<AuthService>(&app).await?;
+    let gateway = resolve::<GatewayService>(&app).await?;
+    let mcp = resolve::<McpHostService>(&app).await?;
+    let nodes = resolve::<NodeRegistryService>(&app).await?;
+    let providers = resolve::<ProviderService>(&app).await?;
 
     auth.seed_admin_if_configured().await?;
     providers.seed_default_if_empty().await?;
@@ -494,6 +478,15 @@ pub async fn build_application(
     let _ = lazy_mcp.set(McpHttpState { auth, mcp });
     let _ = lazy_nodes.set(NodeHttpState { service: nodes });
     Ok(app)
+}
+
+async fn resolve<T: Send + Sync + 'static>(
+    app: &Application<OpenApiAxumApplication>,
+) -> Result<Arc<T>, ServerError> {
+    app.container()
+        .resolve::<T>()
+        .await
+        .map_err(|e| ServerError::Internal(e.to_string()))
 }
 
 pub use crate::infra::webui::mount_native_stream_and_mcp_routes;

@@ -13,6 +13,7 @@ pub mod plugins;
 pub mod providers;
 pub mod secrets;
 pub mod sessions;
+pub mod skills;
 pub mod swarm;
 pub mod tasks;
 pub mod workflows;

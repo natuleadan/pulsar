@@ -15,6 +15,7 @@ pub mod providers;
 pub mod rpc;
 pub mod sandbox;
 pub mod schema;
+pub mod skills;
 pub mod stream;
 pub mod swarm;
 pub mod task;
@@ -64,6 +65,12 @@ pub use sandbox::{
     ThirdPartyProvider,
 };
 pub use schema::{ProtocolSchemaBundle, SandboxMatrixEntry, export_protocol_schema};
+pub use skills::{
+    BUILTIN_SKILL_CODEBASE_INSPECTOR, BUILTIN_SKILL_CORE_TERMINAL, BUILTIN_SKILL_FILESYSTEM_VFS,
+    BUILTIN_SKILL_GIT_VCS, MAX_DESCRIPTION_LENGTH, MAX_SKILL_BUDGET_PERCENT, SkillCatalogItem,
+    SkillInstallInput, SkillManifest, SkillSecurityViolation, SkillSource, format_prompt_catalog,
+    get_builtin_system_skills, scan_skill_security,
+};
 pub use stream::{EventEnvelope, EventFeedLane, StreamPayload, TaskStreamEvent, ToolPhase};
 pub use swarm::{
     AgentHandoff, MAX_CONCURRENT_SUBAGENTS_PER_TREE, MAX_SUBAGENT_DEPTH, PermissionError,

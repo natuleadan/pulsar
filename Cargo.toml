@@ -6,6 +6,7 @@ members = [
     "crates/boxer",
     "crates/installer",
     "crates/client",
+    "crates/sdk",
 ]
 resolver = "2"
 
