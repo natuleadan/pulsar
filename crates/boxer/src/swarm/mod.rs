@@ -150,10 +150,111 @@ pub fn provision_task_worktree(
     let dir = resolve_confined_workdir(workspace_root, session_id, Some(&rel))?;
     let mut res = SandboxResources::new(task_id);
     res.preview_route_file = None;
-    fn noop_cleanup(res: SandboxResources) {
+    fn cleanup_worktree_dir(res: SandboxResources) {
         res.cleanup_sync();
     }
-    Ok((dir, CleanupDropGuard::new(res, noop_cleanup)))
+    Ok((dir, CleanupDropGuard::new(res, cleanup_worktree_dir)))
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GitWorktreeSoftSandbox {
+    pub repo_root: PathBuf,
+    pub worktree_dir: PathBuf,
+    pub branch_name: String,
+    pub task_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SoftSandboxActionVerdict {
+    AllowInWorktree,
+    EscalateToHardContainer { reason: String },
+}
+
+pub fn create_git_worktree_sandbox(
+    repo_root: &Path,
+    task_id: &str,
+) -> Result<GitWorktreeSoftSandbox, BoxerError> {
+    let safe_id: String = task_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .collect();
+    if safe_id.is_empty() {
+        return Err(BoxerError::IsolationViolation(
+            "git worktree task_id must be alphanumeric".into(),
+        ));
+    }
+    let branch_name = format!("task-{safe_id}");
+    let worktree_dir = repo_root.join(".worktrees").join(&safe_id);
+    if let Some(parent) = worktree_dir.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let git_dir = repo_root.join(".git");
+    if git_dir.exists() {
+        let out = std::process::Command::new("git")
+            .current_dir(repo_root)
+            .args([
+                "worktree",
+                "add",
+                "-B",
+                &branch_name,
+                &worktree_dir.to_string_lossy(),
+            ])
+            .output()
+            .map_err(|e| BoxerError::ExecutionFailed(format!("git worktree spawn failed: {e}")))?;
+        if !out.status.success() {
+            std::fs::create_dir_all(&worktree_dir)?;
+        }
+    } else {
+        std::fs::create_dir_all(&worktree_dir)?;
+    }
+
+    Ok(GitWorktreeSoftSandbox {
+        repo_root: repo_root.to_path_buf(),
+        worktree_dir,
+        branch_name,
+        task_id: safe_id,
+    })
+}
+
+pub fn remove_git_worktree_sandbox(sandbox: &GitWorktreeSoftSandbox) {
+    if sandbox.repo_root.join(".git").exists() {
+        let _ = std::process::Command::new("git")
+            .current_dir(&sandbox.repo_root)
+            .args([
+                "worktree",
+                "remove",
+                "--force",
+                &sandbox.worktree_dir.to_string_lossy(),
+            ])
+            .output();
+        let _ = std::process::Command::new("git")
+            .current_dir(&sandbox.repo_root)
+            .args(["branch", "-D", &sandbox.branch_name])
+            .output();
+    }
+    let _ = std::fs::remove_dir_all(&sandbox.worktree_dir);
+}
+
+#[must_use]
+pub fn evaluate_soft_sandbox_escalation(
+    tool_name: &str,
+    requires_network: bool,
+    executes_binary: bool,
+) -> SoftSandboxActionVerdict {
+    if requires_network {
+        return SoftSandboxActionVerdict::EscalateToHardContainer {
+            reason: format!("tool `{tool_name}` requested network egress inside soft worktree"),
+        };
+    }
+    if executes_binary || tool_name.eq_ignore_ascii_case("shell") {
+        return SoftSandboxActionVerdict::EscalateToHardContainer {
+            reason: format!(
+                "tool `{tool_name}` requires process/binary execution; escalating to hard container"
+            ),
+        };
+    }
+    SoftSandboxActionVerdict::AllowInWorktree
 }
 
 fn hmac_sha256_hex(key: &[u8], msg: &[u8]) -> String {

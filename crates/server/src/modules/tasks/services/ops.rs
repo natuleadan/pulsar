@@ -6,7 +6,10 @@ use crate::{
     infra::{error::ServerError, state::now_ms, stream::emit_stream_event},
     modules::{
         auth::entities::AuthenticatedActor,
-        tasks::{dto::FollowUpDto, entities::TaskEntity},
+        tasks::{
+            dto::{FollowUpDto, HardKillBoxResponse},
+            entities::TaskEntity,
+        },
     },
 };
 
@@ -91,5 +94,37 @@ impl TaskService {
         )
         .await;
         Ok(cancelled)
+    }
+
+    pub async fn hard_kill_box(
+        &self,
+        actor: &AuthenticatedActor,
+        session_id: &str,
+        box_id: &str,
+    ) -> Result<HardKillBoxResponse, ServerError> {
+        let _ = self.sessions.get_owned(actor, session_id).await?;
+        let _ = self
+            .bus
+            .0
+            .publish_task_cancel(box_id, session_id, agents_protocol::FencingToken(u64::MAX))
+            .await;
+        let _ = emit_stream_event(
+            &self.streams,
+            &self.bus,
+            session_id,
+            Some(box_id),
+            StreamPayload::WorkerStateChanged {
+                node_id: "control-plane".to_owned(),
+                status: WorkerStatus::Done,
+                reason: Some("CancelledByOperator (hard kill switch)".to_owned()),
+            },
+        )
+        .await;
+        Ok(HardKillBoxResponse {
+            session_id: session_id.to_owned(),
+            box_id: box_id.to_owned(),
+            killed: true,
+            state: "CancelledByOperator".to_owned(),
+        })
     }
 }

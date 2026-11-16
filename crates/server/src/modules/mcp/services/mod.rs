@@ -8,15 +8,24 @@ use ironic::{McpRouter, McpTool, prelude::*};
 use serde_json::{Value, json};
 
 use crate::{
-    infra::{config::ServerConfig, error::ServerError},
+    infra::{cache::AppCache, config::ServerConfig, error::ServerError},
     modules::{
         audit::services::AuditService,
         auth::{entities::AuthenticatedActor, services::StateStore},
-        mcp::dto::{McpPolicyInfo, McpToolPolicy},
+        mcp::dto::{
+            McpPolicyInfo, McpToolPolicy, SessionToolMaskResponse, UpdateSessionToolMaskDto,
+        },
         sessions::{dto::ListSessionsQuery, services::SessionService},
         tasks::{dto::SubmitTaskDto, services::TaskService},
     },
 };
+
+#[derive(Default, serde::Serialize, serde::Deserialize)]
+struct SessionMaskState {
+    active_disabled: std::collections::BTreeSet<String>,
+    staged_disabled: std::collections::BTreeSet<String>,
+    turn_epoch: u64,
+}
 
 tokio::task_local! {
     static CURRENT_MCP_ACTOR: AuthenticatedActor;
@@ -36,6 +45,7 @@ pub struct McpHostService {
     sessions: Arc<SessionService>,
     tasks: Arc<TaskService>,
     state: Arc<StateStore>,
+    cache: Arc<AppCache>,
     audit: Arc<AuditService>,
     config: Arc<ServerConfig>,
 }
@@ -51,6 +61,45 @@ impl McpHostService {
             endpoint: "/mcp".to_owned(),
             allowed_tools: names,
         }
+    }
+
+    pub async fn update_session_tool_mask(
+        &self,
+        actor: &AuthenticatedActor,
+        session_id: &str,
+        dto: &UpdateSessionToolMaskDto,
+    ) -> Result<SessionToolMaskResponse, ServerError> {
+        let _ = self.sessions.get_owned(actor, session_id).await?;
+        let key = format!("session_tool_mask:{session_id}");
+        let mut state: SessionMaskState = self.cache.get_json(&key).await.unwrap_or_default();
+
+        for tool in &dto.disable_tools {
+            state
+                .staged_disabled
+                .insert(tool.trim().to_ascii_lowercase());
+        }
+        for tool in &dto.enable_tools {
+            state
+                .staged_disabled
+                .remove(&tool.trim().to_ascii_lowercase());
+        }
+        if dto.commit_turn_boundary {
+            state.active_disabled = state.staged_disabled.clone();
+            state.turn_epoch = state.turn_epoch.saturating_add(1);
+        }
+
+        let active_vec: Vec<String> = state.active_disabled.iter().cloned().collect();
+        let staged_vec: Vec<String> = state.staged_disabled.iter().cloned().collect();
+        self.cache
+            .set_json(&key, &state, Duration::from_secs(86_400))
+            .await;
+
+        Ok(SessionToolMaskResponse {
+            session_id: session_id.to_owned(),
+            active_disabled_tools: active_vec,
+            staged_disabled_tools: staged_vec,
+            turn_epoch: state.turn_epoch,
+        })
     }
 
     /// Verifies sliding-window Valkey rate limit for an MCP caller.

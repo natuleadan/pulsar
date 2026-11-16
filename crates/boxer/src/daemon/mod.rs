@@ -3,6 +3,12 @@
 
 pub mod agent_bridge;
 pub mod bus;
+pub mod watchdog;
+
+pub use watchdog::{
+    SessionToolMask, SystemOneDecisionKind, SystemOneVerdict, WATCHDOG_SILENCE_THRESHOLD_SECS,
+    WatchdogAction, WatchdogTelemetrySample, evaluate_system_one_watchdog,
+};
 
 use std::{
     sync::{

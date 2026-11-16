@@ -110,6 +110,7 @@ pub fn build_sanitized_env(
     env.insert("LANG".to_owned(), "C.UTF-8".to_owned());
     env.insert("LC_ALL".to_owned(), "C.UTF-8".to_owned());
     env.insert("TERM".to_owned(), "xterm-256color".to_owned());
+    env.insert("NLA_SANDBOXED".to_owned(), "1".to_owned());
 
     for var_name in &exec.env_allowlist {
         let trimmed = var_name.trim();

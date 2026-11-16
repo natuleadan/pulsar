@@ -17,8 +17,8 @@ use crate::{
         },
         tasks::{
             dto::{
-                CompleteTaskDto, FollowUpDto, LeaseTaskDto, ListTasksQuery, SteerTaskDto,
-                SubmitTaskDto, UpdateTaskStateDto,
+                CompleteTaskDto, FollowUpDto, HardKillBoxResponse, LeaseTaskDto, ListTasksQuery,
+                SteerTaskDto, SubmitTaskDto, UpdateTaskStateDto,
             },
             entities::TaskEntity,
             services::TaskService,
@@ -299,5 +299,30 @@ impl TasksController {
         require_scope(&actor, ApiKeyScope::Write)?;
         let task = self.service.cancel(&actor, &id).await?;
         Ok(Json(task))
+    }
+
+    #[post("/sessions/:session_id/boxes/:box_id/kill")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Immediate operator hard kill switch for an active sandbox container",
+        tag = "Tasks",
+        security = "bearerAuth"
+    )]
+    #[resp(200, "Sandbox container hard killed", json = HardKillBoxResponse)]
+    #[resp(401, "Unauthorized", json = ErrorResponse)]
+    #[resp(403, "Forbidden", json = ErrorResponse)]
+    #[resp(404, "Session not found", json = ErrorResponse)]
+    async fn hard_kill_box(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] session_id: String,
+        #[param] box_id: String,
+    ) -> Result<Json<HardKillBoxResponse>, HttpError> {
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(
+            self.service
+                .hard_kill_box(&actor, &session_id, &box_id)
+                .await?,
+        ))
     }
 }

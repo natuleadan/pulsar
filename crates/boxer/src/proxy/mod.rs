@@ -79,12 +79,24 @@ impl EgressIdentityPolicy {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EgressLedgerRecord {
+    pub method: String,
+    pub host: String,
+    pub url: String,
+    pub status_code: u16,
+    pub credential_injected: bool,
+    pub recorded_at_ms: u64,
+}
+
 #[derive(Clone)]
 struct ProxyState {
     network_egress_enabled: bool,
     allowed_hosts: Arc<Vec<String>>,
     credentials: Arc<HashMap<String, (String, String)>>,
     identity_policy: Arc<EgressIdentityPolicy>,
+    ledger: Arc<tokio::sync::Mutex<Vec<EgressLedgerRecord>>>,
     http: Client<HttpConnector, Full<Bytes>>,
 }
 
@@ -108,6 +120,7 @@ struct ProxyErrorBody {
 /// Running outbound credential proxy bound strictly on private VLAN or loopback.
 pub struct OutboundCredentialProxy {
     addr: SocketAddr,
+    ledger: Arc<tokio::sync::Mutex<Vec<EgressLedgerRecord>>>,
     task: JoinHandle<()>,
 }
 
@@ -163,6 +176,7 @@ impl OutboundCredentialProxy {
         connector.enforce_http(false);
         let http = Client::builder(TokioExecutor::new()).build(connector);
 
+        let ledger = Arc::new(tokio::sync::Mutex::new(Vec::new()));
         let state = ProxyState {
             network_egress_enabled,
             allowed_hosts: Arc::new(
@@ -173,6 +187,7 @@ impl OutboundCredentialProxy {
             ),
             credentials: Arc::new(credentials),
             identity_policy: Arc::new(identity_policy),
+            ledger: Arc::clone(&ledger),
             http,
         };
 
@@ -189,6 +204,7 @@ impl OutboundCredentialProxy {
 
         Ok(Self {
             addr: local_addr,
+            ledger,
             task,
         })
     }
@@ -201,6 +217,10 @@ impl OutboundCredentialProxy {
     #[must_use]
     pub fn local_addr(&self) -> SocketAddr {
         self.addr
+    }
+
+    pub async fn ledger_entries(&self) -> Vec<EgressLedgerRecord> {
+        self.ledger.lock().await.clone()
     }
 }
 
@@ -232,9 +252,28 @@ async fn handle_forward(
         }
     };
 
+    let Some(scheme) = parsed.scheme_str() else {
+        return json_error(StatusCode::BAD_REQUEST, "target url missing scheme");
+    };
+    if !matches!(scheme.to_ascii_lowercase().as_str(), "http" | "https") {
+        return json_error(
+            StatusCode::FORBIDDEN,
+            "raw TCP and non-HTTP/HTTPS schemes are banned by L7 egress policy",
+        );
+    }
+
     let Some(host) = parsed.host().map(str::to_ascii_lowercase) else {
         return json_error(StatusCode::BAD_REQUEST, "target url missing host");
     };
+
+    if let Some(port) = parsed.port_u16()
+        && is_banned_raw_tcp_port(port)
+    {
+        return json_error(
+            StatusCode::FORBIDDEN,
+            &format!("raw database/service TCP port {port} is banned; use official L7 HTTPS API"),
+        );
+    }
 
     if is_blocked_metadata_host(&host) {
         return json_error(
@@ -296,6 +335,7 @@ async fn handle_forward(
         );
     }
 
+    let mut credential_injected = false;
     if let Some((hdr_name, hdr_val)) = state.credentials.get(&host)
         && let (Ok(name), Ok(val)) = (
             HeaderName::from_bytes(hdr_name.as_bytes()),
@@ -303,6 +343,7 @@ async fn handle_forward(
         )
     {
         builder = builder.header(name, val);
+        credential_injected = true;
     }
 
     let body_bytes = req.body.map(Bytes::from).unwrap_or_default();
@@ -327,6 +368,14 @@ async fn handle_forward(
     };
 
     let status = upstream.status();
+    state.ledger.lock().await.push(EgressLedgerRecord {
+        method: req.method.clone(),
+        host,
+        url: req.url,
+        status_code: status.as_u16(),
+        credential_injected,
+        recorded_at_ms: crate::config::now_ms(),
+    });
     let upstream_headers = upstream.headers().clone();
     let bytes = match upstream.into_body().collect().await {
         Ok(c) => c.to_bytes(),
@@ -351,6 +400,14 @@ fn is_blocked_metadata_host(host: &str) -> bool {
     matches!(
         host,
         "169.254.169.254" | "169.254.170.2" | "metadata.google.internal" | "metadata"
+    )
+}
+
+#[must_use]
+pub const fn is_banned_raw_tcp_port(port: u16) -> bool {
+    matches!(
+        port,
+        22 | 25 | 3306 | 4222 | 5432 | 6379 | 9091 | 11211 | 27017
     )
 }
 

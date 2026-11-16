@@ -87,3 +87,12 @@ pub struct ListTasksQuery {
     #[garde(range(min = 1, max = 100))]
     pub limit: Option<u32>,
 }
+
+#[derive(Debug, Clone, serde::Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct HardKillBoxResponse {
+    pub session_id: String,
+    pub box_id: String,
+    pub killed: bool,
+    pub state: String,
+}

@@ -23,7 +23,7 @@ use crate::{
             services::AuthService,
         },
         mcp::{
-            dto::McpPolicyInfo,
+            dto::{McpPolicyInfo, SessionToolMaskResponse, UpdateSessionToolMaskDto},
             services::{McpHostService, with_mcp_actor},
         },
     },
@@ -62,6 +62,32 @@ impl McpController {
     ) -> Result<Json<McpPolicyInfo>, HttpError> {
         require_scope(&actor, ApiKeyScope::Read)?;
         Ok(Json(self.service.policy_info()))
+    }
+
+    #[post("/sessions/:session_id/tool-mask")]
+    #[guard(ScopeGuard::new(ApiKeyScope::Write))]
+    #[api(
+        summary = "Stage or commit dynamic tool mask updates at turn boundaries",
+        tag = "MCP",
+        security = "bearerAuth"
+    )]
+    #[body(json = UpdateSessionToolMaskDto)]
+    #[resp(200, "Updated session tool mask", json = SessionToolMaskResponse)]
+    #[resp(401, "Unauthorized", json = ErrorResponse)]
+    #[resp(403, "Forbidden", json = ErrorResponse)]
+    #[resp(404, "Session not found", json = ErrorResponse)]
+    async fn update_tool_mask(
+        &self,
+        #[decorator(CurrentActor)] actor: AuthenticatedActor,
+        #[param] session_id: String,
+        #[body] dto: UpdateSessionToolMaskDto,
+    ) -> Result<Json<SessionToolMaskResponse>, HttpError> {
+        require_scope(&actor, ApiKeyScope::Write)?;
+        Ok(Json(
+            self.service
+                .update_session_tool_mask(&actor, &session_id, &dto)
+                .await?,
+        ))
     }
 }
 

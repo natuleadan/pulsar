@@ -24,6 +24,7 @@ use crate::{
     leases::{CleanupDropGuard, SandboxResources, guard::terminate_process_group_sync},
     sandbox::{
         BoxFuture, SandboxDriver, SandboxExecOutput, SandboxExecRequest,
+        native_backends::generate_macos_seatbelt_profile,
         policy::{
             binary_exists, build_sanitized_env, resolve_confined_workdir,
             validate_runtime_isolation,
@@ -191,34 +192,44 @@ fn build_host_command(req: &SandboxExecRequest, workdir: &std::path::Path) -> Co
     if req.profile.isolation == IsolationKind::Native && binary_exists("bwrap") {
         let mut cmd = Command::new("bwrap");
         let workdir_str = workdir.to_string_lossy().into_owned();
-        cmd.args([
-            "--die-with-parent",
-            "--unshare-user",
-            "--unshare-pid",
-            "--ro-bind",
-            "/usr",
-            "/usr",
-            "--ro-bind",
-            "/bin",
-            "/bin",
-            "--ro-bind",
-            "/lib",
-            "/lib",
-            "--bind",
-            &workdir_str,
-            &workdir_str,
-            "--chdir",
-            &workdir_str,
-            "--proc",
-            "/proc",
-            "--dev",
-            "/dev",
-            "--tmpfs",
-            "/tmp",
-            "sh",
-            "-c",
-            &wrapped_script,
-        ]);
+        let mut args = vec![
+            "--die-with-parent".to_owned(),
+            "--unshare-user".to_owned(),
+            "--unshare-pid".to_owned(),
+            "--unshare-net".to_owned(),
+            "--ro-bind".to_owned(),
+            "/usr".to_owned(),
+            "/usr".to_owned(),
+            "--ro-bind".to_owned(),
+            "/bin".to_owned(),
+            "/bin".to_owned(),
+            "--ro-bind".to_owned(),
+            "/lib".to_owned(),
+            "/lib".to_owned(),
+            "--bind".to_owned(),
+            workdir_str.clone(),
+            workdir_str.clone(),
+            "--chdir".to_owned(),
+            workdir_str,
+            "--proc".to_owned(),
+            "/proc".to_owned(),
+            "--dev".to_owned(),
+            "/dev".to_owned(),
+            "--tmpfs".to_owned(),
+            "/tmp".to_owned(),
+        ];
+        args.extend(["sh".to_owned(), "-c".to_owned(), wrapped_script]);
+        cmd.args(args);
+        return cmd;
+    }
+
+    if req.profile.isolation == IsolationKind::Native
+        && cfg!(target_os = "macos")
+        && binary_exists("sandbox-exec")
+    {
+        let profile = generate_macos_seatbelt_profile(workdir, req.exec.network_egress);
+        let mut cmd = Command::new("sandbox-exec");
+        cmd.args(["-p", &profile.scheme_source, "sh", "-c", &wrapped_script]);
         return cmd;
     }
 

@@ -31,10 +31,32 @@ impl McpToolPolicy {
     }
 }
 
-/// Summary of the MCP host policy returned on admin/metadata inspection.
 #[derive(Debug, Clone, Serialize, Deserialize, OpenApiSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct McpPolicyInfo {
     pub endpoint: String,
     pub allowed_tools: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, garde::Validate, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateSessionToolMaskDto {
+    #[garde(skip)]
+    #[serde(default)]
+    pub disable_tools: Vec<String>,
+    #[garde(skip)]
+    #[serde(default)]
+    pub enable_tools: Vec<String>,
+    #[garde(skip)]
+    #[serde(default)]
+    pub commit_turn_boundary: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, OpenApiSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionToolMaskResponse {
+    pub session_id: String,
+    pub active_disabled_tools: Vec<String>,
+    pub staged_disabled_tools: Vec<String>,
+    pub turn_epoch: u64,
 }

@@ -3,6 +3,7 @@
 pub mod deepinfra;
 pub mod docker;
 pub mod host;
+pub mod native_backends;
 pub mod policy;
 pub mod remote;
 pub mod upstash_box;
@@ -19,6 +20,11 @@ use crate::{config::BoxerConfig, error::BoxerError};
 pub use deepinfra::DeepInfraSandboxRuntimeDriver;
 pub use docker::{DockerCommandSpec, DockerRuntimeDriver};
 pub use host::HostRuntimeDriver;
+pub use native_backends::{
+    HOST_UNCONFINED_ACK_ENV, HOST_UNCONFINED_ACK_VALUE, HostModeGuardVerdict, LandlockRulesetSpec,
+    SeatbeltProfile, build_linux_landlock_spec, generate_macos_seatbelt_profile,
+    has_os_native_sandbox, validate_hardened_host_mode,
+};
 pub use policy::{build_sanitized_env, resolve_confined_workdir, validate_runtime_isolation};
 pub use remote::{RemoteExecDescriptor, RemoteVpsRuntimeDriver};
 pub use upstash_box::UpstashBoxRuntimeDriver;
