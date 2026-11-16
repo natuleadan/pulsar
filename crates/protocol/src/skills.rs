@@ -141,10 +141,9 @@ pub fn scan_skill_security(content: &str) -> Result<(), Vec<SkillSecurityViolati
             "brew install",
             "Package manager invocation is forbidden (Rule G-6)",
         ),
-        ("curl | sh", "Unverified remote script pipe is forbidden"),
-        ("curl | bash", "Unverified remote bash pipe is forbidden"),
-        ("wget | sh", "Unverified remote wget pipe is forbidden"),
-        ("wget | bash", "Unverified remote bash pipe is forbidden"),
+        ("| sh", "Unverified remote script pipe is forbidden"),
+        ("| bash", "Unverified remote bash pipe is forbidden"),
+        ("| zsh", "Unverified remote shell pipe is forbidden"),
         ("/usr/local/bin", "Modification of host shims is forbidden"),
         ("chmod 777", "Permissive permission alteration is forbidden"),
     ];
