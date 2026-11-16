@@ -66,6 +66,7 @@ use crate::{
             InMemoryProviderRepository, PgProviderRepository, ProviderService, ProviderStore,
             ProvidersModule,
         },
+        robots::{RobotRegistryStore, RobotsModule},
         secrets::{InMemorySecretRepository, PgSecretRepository, SecretStore, SecretsModule},
         sessions::{
             SessionsModule,
@@ -121,6 +122,7 @@ impl Module for InfraModule {
             .provider(ProviderDefinition::value(ProviderStore::default()))
             .provider(ProviderDefinition::value(SecretStore::default()))
             .provider(ProviderDefinition::value(SkillStore::default()))
+            .provider(ProviderDefinition::value(RobotRegistryStore::default()))
             .export::<ServerConfig>()
             .export::<AppCache>()
             .export::<AppEventBus>()
@@ -145,6 +147,7 @@ impl Module for InfraModule {
             .export::<ProviderStore>()
             .export::<SecretStore>()
             .export::<SkillStore>()
+            .export::<RobotRegistryStore>()
             .lifecycle(
                 LifecycleDefinition::builder::<SecurityLifecycleHook>()
                     .guard_denied()
@@ -180,6 +183,7 @@ impl Module for InfraModule {
     SecretsModule,
     WorkgroupsModule,
     SkillsModule,
+    RobotsModule,
 ])]
 pub struct AppModule;
 

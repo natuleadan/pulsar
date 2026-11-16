@@ -12,6 +12,7 @@ pub mod node;
 pub mod plugin;
 pub mod preview;
 pub mod providers;
+pub mod robot;
 pub mod rpc;
 pub mod sandbox;
 pub mod schema;
@@ -55,6 +56,12 @@ pub use preview::TraefikPreviewRoute;
 pub use providers::{
     ConversationMessage, DiscoveredModel, ProviderProtocol, ToolDefinition,
     UniversalCompletionRequest, UniversalStreamChunk, parse_models_catalog_json, parse_sse_line,
+};
+pub use robot::{
+    DeviceHandshake, DeviceRegistrationResponse, NATS_SUBJECT_ROBOT_COMMANDS_PREFIX,
+    NATS_SUBJECT_ROBOT_SAFETY_ALERTS, NATS_SUBJECT_ROBOT_TELEMETRY_PREFIX, RobotCommandFrame,
+    RobotDeviceSummary, RobotSafetyAlert, RobotTelemetryFrame, robot_command_subject,
+    robot_telemetry_subject,
 };
 pub use rpc::{
     CursorPage, ExecutionScope, METHOD_CATALOG, PageRequest, RequestId, RpcError, RpcErrorCode,

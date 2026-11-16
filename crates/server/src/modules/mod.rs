@@ -11,6 +11,7 @@ pub mod mcp;
 pub mod nodes;
 pub mod plugins;
 pub mod providers;
+pub mod robots;
 pub mod secrets;
 pub mod sessions;
 pub mod skills;
