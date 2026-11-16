@@ -15,3 +15,4 @@ pub mod sessions;
 pub mod swarm;
 pub mod tasks;
 pub mod workflows;
+pub mod workgroups;

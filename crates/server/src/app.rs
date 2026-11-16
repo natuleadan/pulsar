@@ -83,6 +83,7 @@ use crate::{
             WorkflowsModule,
             repositories::{InMemoryWorkflowRepository, PgWorkflowRepository, WorkflowStore},
         },
+        workgroups::WorkgroupsModule,
     },
 };
 
@@ -174,6 +175,7 @@ impl Module for InfraModule {
     A2aModule,
     ProvidersModule,
     SecretsModule,
+    WorkgroupsModule,
 ])]
 pub struct AppModule;
 
