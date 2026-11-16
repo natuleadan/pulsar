@@ -9,6 +9,7 @@ pub mod gateway;
 pub mod identity;
 pub mod mcp;
 pub mod nodes;
+pub mod plugins;
 pub mod providers;
 pub mod secrets;
 pub mod sessions;

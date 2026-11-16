@@ -8,6 +8,7 @@ pub mod config_hierarchy;
 pub mod error_taxonomy;
 pub mod identity;
 pub mod node;
+pub mod plugin;
 pub mod preview;
 pub mod providers;
 pub mod rpc;
@@ -44,6 +45,9 @@ pub use identity::{
     validate_worker_quota_invariant,
 };
 pub use node::{BoxerNodeAnnouncement, NodeStatus, PreviewRouteSync};
+pub use plugin::{
+    AgentCard, AgentCardEndpoints, PluginCapabilityMask, PluginManifest, PluginToolDefinition,
+};
 pub use preview::TraefikPreviewRoute;
 pub use providers::{
     ConversationMessage, DiscoveredModel, ProviderProtocol, ToolDefinition,

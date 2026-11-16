@@ -3,6 +3,8 @@
 pub mod controller;
 pub mod dto;
 pub mod services;
+pub mod transpiler;
+pub mod validator;
 
 use ironic::prelude::*;
 
