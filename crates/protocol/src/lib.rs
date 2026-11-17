@@ -21,6 +21,7 @@ pub mod stream;
 pub mod swarm;
 pub mod task;
 pub mod tool_decision;
+pub mod update;
 pub mod version;
 pub mod workflow;
 
@@ -92,6 +93,9 @@ pub use task::{
 pub use tool_decision::{
     ToolDecisionKind, ToolDecisionVerdict, ToolPolicyRule, build_hygienic_tool_env,
     evaluate_monotonic_tool_decision, is_forbidden_secret_env,
+};
+pub use update::{
+    PackageEntry, PlatformAsset, UpdateChannel, UpdateManifest, UpdateValidationError,
 };
 pub use version::{API_GENERATION, Capability, CodecId, HandshakeRequest, HandshakeResponse};
 pub use workflow::{AutocronSchedule, TriggerKind, WorkflowDag, WorkflowEdge, WorkflowNode};
