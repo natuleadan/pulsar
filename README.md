@@ -1,35 +1,41 @@
-# natuleadan-pulsar
+# Natuleadan® Pulsar™
 
-Distributed, self-sustaining Rust agent harness combining an Ironic API orchestrator,
-NATS JetStream swarm messaging, Valkey ephemeral state, PostgreSQL persistence,
-modular Boxer sandbox execution, Traefik ephemeral previews, and multi-platform NSH clients.
+> A self-sustaining, sovereign distributed AI agent harness written in Rust.
 
-## Crates
+Pulsar separates orchestration, sandboxed execution, provisioning and multi-platform interfaces into a one-way modular Cargo workspace. Shared wire contracts keep every component independently evolvable.
 
-- **`pulsar-protocol`**: Shared protocol contracts, named codecs, JSON-RPC, and event streaming DTOs.
-- **`pulsar-styles`**: Reusable cross-platform design tokens, component specs, and NSH-inspired UI primitives.
-- **`pulsar-server`**: Central orchestrator daemon with Ironic NestJS-like modules, PostgreSQL, Valkey, NATS, MCP host, and autocron engine.
-- **`pulsar-boxer`**: Sandbox daemon supervising `Runtime x Isolation` backends (`host`, `docker`, `openshell`), Traefik preview routes, and the native 2-level agent loop.
-- **`pulsar-installer`**: VPS provisioning CLI coordinating external `.sh` hardening and cluster setup scripts.
-- **`pulsar-client`**: Shared `client-core`, `client-tui`, and multi-platform `nsh` GUI (`web`, `ios`, `android`, `macos`, `windows`, `linux`) with `Server` and `Third-Party` modes.
+## What it provides
+
+- A shared protocol crate for HTTP, WebSocket, SSE and JSON-RPC contracts.
+- An orchestrator daemon for sessions, tasks, workflows and integrations.
+- A sandbox supervisor with isolation backends and audited egress.
+- A zero-sudo installer for reproducible deployments.
+
+## Layout
+
+| Path | Purpose |
+|---|---|
+| `crates/protocol` | Shared wire contracts |
+| `crates/server` | Orchestrator daemon |
+| `crates/boxer` | Sandbox supervisor |
+| `crates/installer` | Provisioning CLI |
+| `crates/client` | Multi-platform client |
+| `helpers/` | Deployment and validation tooling |
 
 ## Development
 
-```bash
-# Install commitlint, Husky hooks, and workspace tooling
-pnpm install
+Requires Rust 1.100 or newer and pnpm. Run the same checks locally that CI
+runs before opening a pull request.
 
-# Regenerate ThirdPartyNotices.txt from direct dependencies
-pnpm notices
-
-# Run full repository, formatting, clippy, test, notices, and release-plan checks
+```sh
 pnpm validate
 ```
 
-## Documentation & Governance
+## Documentation
 
-- [AGENTS.md](AGENTS.md) — technical architecture rules, branch model, and validation gates.
-- [CONTRIBUTING.md](CONTRIBUTING.md) — commit policy and semantic release workflow.
-- [SECURITY.md](SECURITY.md) — vulnerability disclosure and security scope.
-- [NOTICE](NOTICE) — Apache-2.0 attribution notice.
-- [ThirdPartyNotices.txt](ThirdPartyNotices.txt) — generated full licenses of direct workspace dependencies.
+- [Architecture](docs/ARCHITECTURE.md)
+- [Contributing](CONTRIBUTING.md)
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).
