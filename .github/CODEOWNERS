@@ -1,2 +1,2 @@
-# Default owner: every change needs a review request from the maintainer.
-* @leojara95
+# Default owner: merges to protected branches require nla-agent review.
+* @nla-agent
