@@ -1,22 +1,4 @@
 target/
-**/*.rs.bk
-
-# Node & Tooling
 node_modules/
-dist/
-pnpm-debug.log*
-
-# Environment and Private files
 .env
-.env.*
-!.env.example
 .local/
-internal/
-
-# Editor / OS
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-*.swp
-/.logs

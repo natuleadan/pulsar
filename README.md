@@ -1,35 +1,45 @@
-# natuleadan-pulsar
+# Natuleadan® Pulsar™
 
-Distributed, self-sustaining Rust agent harness combining an Ironic API orchestrator,
-NATS JetStream swarm messaging, Valkey ephemeral state, PostgreSQL persistence,
-modular Boxer sandbox execution, Traefik ephemeral previews, and multi-platform NSH clients.
+> A self-sustaining, sovereign distributed AI agent harness written in Rust.
 
-## Crates
+## What it is
 
-- **`pulsar-protocol`**: Shared protocol contracts, named codecs, JSON-RPC, and event streaming DTOs.
-- **`pulsar-styles`**: Reusable cross-platform design tokens, component specs, and NSH-inspired UI primitives.
-- **`pulsar-server`**: Central orchestrator daemon with Ironic NestJS-like modules, PostgreSQL, Valkey, NATS, MCP host, and autocron engine.
-- **`pulsar-boxer`**: Sandbox daemon supervising `Runtime x Isolation` backends (`host`, `docker`, `openshell`), Traefik preview routes, and the native 2-level agent loop.
-- **`pulsar-installer`**: VPS provisioning CLI coordinating external `.sh` hardening and cluster setup scripts.
-- **`pulsar-client`**: Shared `client-core`, `client-tui`, and multi-platform `nsh` GUI (`web`, `ios`, `android`, `macos`, `windows`, `linux`) with `Server` and `Third-Party` modes.
+Pulsar separates orchestration, sandboxed execution, provisioning and multi-platform interfaces into a one-way modular Cargo workspace, so each component evolves independently without leaking state across boundaries.
+
+## What it provides
+
+It provides shared wire contracts, an Ironic-style orchestrator, a sandbox supervisor with audited egress, and a zero-sudo installer. Contracts are the single source of truth consumed by every process.
+
+## Architecture
+
+Dependencies point one way: the protocol crate is foundational and the server, boxer, installer and client build on it, never on each other. Sessions are append-only and execution is fenced by monotonic tokens.
+
+## Repository layout
+
+The workspace groups crates for protocol, server, boxer, installer, client, styles and SDK, with deployment and validation helpers under `helpers/`. All source lives in the development branch until release.
+
+## Getting started
+
+Clone `https://github.com/natuleadan/pulsar.git`. This branch holds only the
+project baseline; the source code, build manifests and full validation suite
+live in the `dev` branch. Switch to `dev` to build and run the project.
 
 ## Development
 
-```bash
-# Install commitlint, Husky hooks, and workspace tooling
-pnpm install
+Work happens on short-lived branches merged into `dev`. Commits follow
+`type(scope): description` with a body of at least three bullets; commitlint
+enforces the policy locally and in CI. The `main` branch is protected and holds
+only this minimal baseline until the first release.
 
-# Regenerate ThirdPartyNotices.txt from direct dependencies
-pnpm notices
+## Status
 
-# Run full repository, formatting, clippy, test, notices, and release-plan checks
-pnpm validate
-```
+Active development. The current milestone delivers the backend, sandbox and infrastructure. User-facing client work and final certification are scheduled for upcoming batches; the first published version will be 0.1.0.
 
-## Documentation & Governance
+## License
 
-- [AGENTS.md](AGENTS.md) — technical architecture rules, branch model, and validation gates.
-- [CONTRIBUTING.md](CONTRIBUTING.md) — commit policy and semantic release workflow.
-- [SECURITY.md](SECURITY.md) — vulnerability disclosure and security scope.
-- [NOTICE](NOTICE) — Apache-2.0 attribution notice.
-- [ThirdPartyNotices.txt](ThirdPartyNotices.txt) — generated full licenses of direct workspace dependencies.
+Apache-2.0. See [LICENSE](LICENSE).
+
+## Trademark
+
+Natuleadan® Pulsar™ is a trademark of Natuleadan. Other constellation
+repositories: Pulsar, Aurora, Pleaides, Andromeda and Orion.

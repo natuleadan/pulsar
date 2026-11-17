@@ -1,2 +1,2 @@
-# Default owner: merges to protected branches require nla-agent review.
+# Protected branches require nla-agent review.
 * @nla-agent
