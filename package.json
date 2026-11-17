@@ -14,7 +14,7 @@
   },
   "scripts": {
     "prepare": "husky",
-    "validate": "cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && node --test helpers/tools/e2e-cloud.test.mjs && node --test helpers/tools/release-manifest.test.mjs && node --test helpers/tools/catalog-generator.test.mjs && node helpers/tools/check-scripts.mjs && node helpers/tools/release-plan.ts --check && node helpers/tools/third-party-notices.mjs --check",
+    "validate": "node helpers/tools/validate.mjs",
     "ui:verify": "cargo build --bin pulsar-server && node helpers/tools/ui-browser-verify.mjs",
     "e2e:dry-run": "node helpers/tools/e2e-cloud.ts --dry-run",
     "scripts:check": "node helpers/tools/check-scripts.mjs",
