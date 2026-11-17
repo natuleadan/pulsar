@@ -1,4 +1,4 @@
-use agents_server::modules::providers::harness::{
+use pulsar_server::modules::providers::harness::{
     HarnessRegistry, ModelHarness, ModelHarnessDialect,
 };
 

@@ -1,11 +1,11 @@
 {
-  "name": "natuleadan-agents",
+  "name": "natuleadan-pulsar",
   "version": "0.1.0",
   "private": true,
   "description": "Distributed agent harness with modular Boxer sandbox execution, autocron, and Ironic API orchestrator",
   "repository": {
     "type": "git",
-    "url": "https://github.com/natuleadan/agents"
+    "url": "https://github.com/natuleadan/pulsar"
   },
   "license": "Apache-2.0",
   "type": "module",
@@ -15,7 +15,7 @@
   "scripts": {
     "prepare": "husky",
     "validate": "cargo fmt --all -- --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace && node --test helpers/tools/e2e-cloud.test.mjs && node --test helpers/tools/release-manifest.test.mjs && node --test helpers/tools/catalog-generator.test.mjs && node helpers/tools/check-scripts.mjs && node helpers/tools/release-plan.ts --check && node helpers/tools/third-party-notices.mjs --check",
-    "ui:verify": "cargo build --bin agents-server && node helpers/tools/ui-browser-verify.mjs",
+    "ui:verify": "cargo build --bin pulsar-server && node helpers/tools/ui-browser-verify.mjs",
     "e2e:dry-run": "node helpers/tools/e2e-cloud.ts --dry-run",
     "scripts:check": "node helpers/tools/check-scripts.mjs",
     "notices": "node helpers/tools/third-party-notices.mjs",

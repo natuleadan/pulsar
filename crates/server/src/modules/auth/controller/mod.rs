@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{ApiKeyMetadata, ApiKeyScope, TokenPair};
 use ironic::prelude::*;
+use pulsar_protocol::{ApiKeyMetadata, ApiKeyScope, TokenPair};
 
 use crate::{
     infra::error::{ErrorResponse, validate_dto},

@@ -7,16 +7,16 @@ use std::{
     process::Command,
 };
 
-use agents_protocol::{ExecOptions, IsolationKind, RuntimeKind, SandboxProfile};
+use pulsar_protocol::{ExecOptions, IsolationKind, RuntimeKind, SandboxProfile};
 
 use crate::error::BoxerError;
 
 const DEFAULT_SAFE_PATH: &str = "/usr/local/bin:/usr/bin:/bin";
 
 const BLOCKED_ENV_NAMES: &[&str] = &[
-    "AGENTS_JWT_SECRET",
-    "AGENTS_CREDENTIAL_MASTER_KEY",
-    "AGENTS_ADMIN_INITIAL_PASSWORD",
+    "PULSAR_JWT_SECRET",
+    "PULSAR_CREDENTIAL_MASTER_KEY",
+    "PULSAR_ADMIN_INITIAL_PASSWORD",
     "DATABASE_URL",
     "VALKEY_URL",
     "NATS_NKEY_SEED",
@@ -125,7 +125,7 @@ pub fn build_sanitized_env(
     if exec.network_egress
         && let Some(url) = proxy_url
     {
-        env.insert("AGENTS_CREDENTIAL_PROXY".to_owned(), url.to_owned());
+        env.insert("PULSAR_CREDENTIAL_PROXY".to_owned(), url.to_owned());
         env.insert("HTTP_PROXY".to_owned(), url.to_owned());
         env.insert("HTTPS_PROXY".to_owned(), url.to_owned());
     }
@@ -144,7 +144,7 @@ pub fn is_sensitive_env_name(name: &str) -> bool {
         || upper.ends_with("_KEY")
         || upper.ends_with("_TOKEN")
         || upper.ends_with("_PASSWORD")
-        || upper.starts_with("AGENTS_")
+        || upper.starts_with("PULSAR_")
 }
 
 /// Resolves and canonicalizes a session-scoped workspace path, failing closed

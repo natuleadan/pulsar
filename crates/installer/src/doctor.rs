@@ -63,9 +63,9 @@ impl DoctorReport {
 #[must_use]
 pub fn redact_secrets(input: &str) -> String {
     const SECRET_KEYS: &[&str] = &[
-        "AGENTS_JWT_SECRET=",
-        "AGENTS_CREDENTIAL_MASTER_KEY=",
-        "AGENTS_POSTGRES_PASSWORD=",
+        "PULSAR_JWT_SECRET=",
+        "PULSAR_CREDENTIAL_MASTER_KEY=",
+        "PULSAR_POSTGRES_PASSWORD=",
         "VALKEY_PASSWORD=",
         "NATS_NKEY_SEED=",
     ];

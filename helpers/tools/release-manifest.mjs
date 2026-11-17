@@ -164,7 +164,7 @@ if (isEntrypoint) {
   } else if (cmd === "sign-manifest") {
     const secretB64 = readFileSync(flags.key, "utf8");
     const res = createSignedManifest({
-      appId: flags.id || "dev.natuleadan.agents",
+      appId: flags.id || "dev.natuleadan.pulsar",
       version: flags.version || "0.1.0",
       build: Number(flags.build || 1),
       minRuntime: flags["min-runtime"] || "0.1.0",

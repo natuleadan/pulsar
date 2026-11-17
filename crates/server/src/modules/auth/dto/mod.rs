@@ -2,9 +2,9 @@
 
 use std::fmt;
 
-use agents_protocol::{ApiKeyMetadata, ApiKeyScope};
 use garde::Validate;
 use ironic::OpenApiSchema;
+use pulsar_protocol::{ApiKeyMetadata, ApiKeyScope};
 use serde::{Deserialize, Serialize};
 
 /// Registration request validated with `garde` before Argon2id hashing.

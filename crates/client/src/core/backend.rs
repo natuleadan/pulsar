@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::pin::Pin;
 
-use agents_protocol::{
+use pulsar_protocol::{
     EventEnvelope, InteractionMode, IsolationKind, RuntimeKind, SetupMode, ThirdPartyProvider,
     TokenPair,
 };

@@ -8,8 +8,8 @@ use std::{
     sync::Arc,
 };
 
-use agents_protocol::WorkflowNode;
 use ironic::prelude::*;
+use pulsar_protocol::WorkflowNode;
 use serde_json::{Value, json};
 
 pub use dag::{evaluate_edge_condition, validate_dag_topological};
@@ -366,7 +366,7 @@ impl WorkflowService {
                 continue;
             };
 
-            let incoming: Vec<&agents_protocol::WorkflowEdge> = wf
+            let incoming: Vec<&pulsar_protocol::WorkflowEdge> = wf
                 .edges
                 .iter()
                 .filter(|e| e.to_node_id == node_id)

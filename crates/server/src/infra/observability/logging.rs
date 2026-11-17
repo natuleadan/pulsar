@@ -36,18 +36,18 @@ pub struct LoggingConfig {
 
 impl Default for LoggingConfig {
     fn default() -> Self {
-        let log_dir = std::env::var("AGENTS_LOG_DIR")
+        let log_dir = std::env::var("PULSAR_LOG_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|_| {
-                if Path::new("/var/log/agents").is_dir() {
-                    PathBuf::from("/var/log/agents")
+                if Path::new("/var/log/pulsar").is_dir() {
+                    PathBuf::from("/var/log/pulsar")
                 } else {
                     PathBuf::from(".logs")
                 }
             });
 
         let level =
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "info,agents_server=debug".to_owned());
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "info,pulsar_server=debug".to_owned());
 
         Self {
             log_dir,
@@ -174,7 +174,7 @@ fn build_otlp_provider(apm: &ApmConfig, endpoint: &str) -> Option<SdkTracerProvi
 }
 
 /// Initializes structured logging (`fmt` + Ironic `TimeSeriesLayer` -> `YYYY-MM-DD.jsonl`)
-/// and real OTLP distributed tracing when `OTEL_EXPORTER_OTLP_ENDPOINT` / `AGENTS_OTEL_ENDPOINT` / `OTLP_ENDPOINT` is set.
+/// and real OTLP distributed tracing when `OTEL_EXPORTER_OTLP_ENDPOINT` / `PULSAR_OTEL_ENDPOINT` / `OTLP_ENDPOINT` is set.
 #[must_use]
 pub fn init_structured_logging(logging: &LoggingConfig, apm: &ApmConfig) -> Option<OtelGuard> {
     let writable_dir = logging.resolve_writable_dir();
@@ -188,7 +188,7 @@ pub fn init_structured_logging(logging: &LoggingConfig, apm: &ApmConfig) -> Opti
         .as_deref()
         .and_then(|endpoint| build_otlp_provider(apm, endpoint));
     let otel_layer = otlp_provider.as_ref().map(|provider| {
-        let tracer = provider.tracer("agents-server");
+        let tracer = provider.tracer("pulsar-server");
         tracing_opentelemetry::layer().with_tracer(tracer)
     });
 
@@ -248,7 +248,7 @@ impl OpenApiSchema for SystemLogsResponse {
             "properties": {
                 "logs": { "type": "array", "items": { "type": "object" } },
                 "total": { "type": "integer", "example": 25 },
-                "log_dir": { "type": "string", "example": "/var/log/agents" }
+                "log_dir": { "type": "string", "example": "/var/log/pulsar" }
             }
         })
     }

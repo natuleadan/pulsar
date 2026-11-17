@@ -2,9 +2,9 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{SkillInstallInput, SkillManifest};
 use ironic::Json;
 use ironic::prelude::*;
+use pulsar_protocol::{SkillInstallInput, SkillManifest};
 
 use super::services::SkillService;
 use crate::infra::error::ServerError;

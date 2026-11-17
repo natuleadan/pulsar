@@ -2,7 +2,6 @@
 
 use std::sync::{Arc, OnceLock};
 
-use agents_protocol::{ApiKeyScope, BoxerNodeAnnouncement};
 use axum::{
     Router,
     extract::State,
@@ -11,6 +10,7 @@ use axum::{
     routing::get,
 };
 use ironic::prelude::*;
+use pulsar_protocol::{ApiKeyScope, BoxerNodeAnnouncement};
 
 use crate::{
     infra::{

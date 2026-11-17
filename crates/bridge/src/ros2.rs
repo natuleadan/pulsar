@@ -1,6 +1,6 @@
 //! ROS2 DDS and Micro-XRCE-DDS message adapters and serialization.
 
-use agents_protocol::RobotCommandFrame;
+use pulsar_protocol::RobotCommandFrame;
 use serde::{Deserialize, Serialize};
 
 /// 3D vector for linear and angular robotics coordinates.

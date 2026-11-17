@@ -1,8 +1,8 @@
 //! Validated DTOs for swarm subagent handoffs, signed messaging, and blackboard entries.
 
-use agents_protocol::{PermissionMask, SubagentLineage};
 use garde::Validate;
 use ironic::OpenApiSchema;
+use pulsar_protocol::{PermissionMask, SubagentLineage};
 use serde::Deserialize;
 use serde_json::Value;
 

@@ -7,7 +7,7 @@ use std::{
     time::Duration,
 };
 
-use agents_boxer::{
+use pulsar_boxer::{
     config::now_ms,
     error::BoxerError,
     leases::BoxFuture,
@@ -17,7 +17,7 @@ use agents_boxer::{
         SessionTree, ToolCallRequest,
     },
 };
-use agents_protocol::{
+use pulsar_protocol::{
     FollowUpMessage, InteractionMode, PermissionMask, SteeringMessage, StopReason, StreamPayload,
     TurnDecision,
 };
@@ -180,8 +180,8 @@ async fn live_steering_interrupts_inner_batch_while_hooks_and_followup_drive_out
             session_id: "sess-steer".to_owned(),
             task_id: "task-steer".to_owned(),
             content: "/plan".to_owned(),
-            kind: agents_protocol::SteeringInterventionKind::ImmediateIntervention,
-            fencing_token: Some(agents_protocol::FencingToken(1)),
+            kind: pulsar_protocol::SteeringInterventionKind::ImmediateIntervention,
+            fencing_token: Some(pulsar_protocol::FencingToken(1)),
             emitted_at_ms: now_ms(),
         })
         .await?;

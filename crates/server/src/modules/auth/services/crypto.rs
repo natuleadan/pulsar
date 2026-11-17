@@ -3,7 +3,6 @@
 
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use agents_protocol::{ApiKeyScope, UserClaims};
 use argon2::{
     Argon2, PasswordHash, PasswordHasher, PasswordVerifier,
     password_hash::{
@@ -12,6 +11,7 @@ use argon2::{
     },
 };
 use jsonwebtoken::{Algorithm, DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use pulsar_protocol::{ApiKeyScope, UserClaims};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;

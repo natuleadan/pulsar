@@ -1,6 +1,6 @@
 #![allow(clippy::unwrap_used)]
 
-use agents_protocol::{
+use pulsar_protocol::{
     API_GENERATION, ApiKeyScope, ArtifactEntry, ArtifactManifest, ArtifactValidationError,
     Capability, CodecId, EventEnvelope, HandshakeResponse, IsolationKind, LoginRequest,
     METHOD_CATALOG, PermissionError, PermissionMask, RefreshRequest, RequestId, RpcErrorCode,

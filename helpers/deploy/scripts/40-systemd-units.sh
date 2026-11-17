@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install hardened systemd service units and logrotate rules for agents-server and agents-boxer.
+# Install hardened systemd service units and logrotate rules for pulsar-server and pulsar-boxer.
 ROLE="monolithic"
-ENV_FILE="/etc/agents/agents.env"
+ENV_FILE="/etc/pulsar/pulsar.env"
 BIN_DIR="/usr/local/bin"
-DRY_RUN="${AGENTS_DRY_RUN:-0}"
+DRY_RUN="${PULSAR_DRY_RUN:-0}"
 
 usage() {
   cat <<'EOF'
@@ -76,33 +76,33 @@ run_cmd() {
 }
 
 if [[ "${DRY_RUN}" != "1" ]]; then
-  if ! id -u agents >/dev/null 2>&1; then
-    useradd --system --no-create-home --shell /usr/sbin/nologin agents
+  if ! id -u pulsar >/dev/null 2>&1; then
+    useradd --system --no-create-home --shell /usr/sbin/nologin pulsar
   fi
-  install -d -m 0750 -o root -g agents /etc/agents
+  install -d -m 0750 -o root -g pulsar /etc/pulsar
   if [[ -f "${ENV_FILE}" ]]; then
-    chown root:agents "${ENV_FILE}"
+    chown root:pulsar "${ENV_FILE}"
     chmod 0640 "${ENV_FILE}"
   fi
-  install -d -m 0750 -o agents -g agents /var/lib/agents /var/lib/agents/boxes /var/log/agents
+  install -d -m 0750 -o pulsar -g pulsar /var/lib/pulsar /var/lib/pulsar/boxes /var/log/pulsar
 else
-  echo "[DRY-RUN] ensure unprivileged system user 'agents' and /etc/agents, /var/lib/agents"
+  echo "[DRY-RUN] ensure unprivileged system user 'pulsar' and /etc/pulsar, /var/lib/pulsar"
 fi
 
 if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "server" ]]; then
-  write_file /etc/systemd/system/agents-server.service <<EOF
+  write_file /etc/systemd/system/pulsar-server.service <<EOF
 [Unit]
-Description=Agents Ironic Orchestrator Server
+Description=Pulsar Ironic Orchestrator Server
 After=network-online.target postgresql.service docker.service
 Wants=network-online.target docker.service
 
 [Service]
 Type=simple
-User=agents
-Group=agents
-Environment="OTEL_SERVICE_NAME=agents-server"
+User=pulsar
+Group=pulsar
+Environment="OTEL_SERVICE_NAME=pulsar-server"
 EnvironmentFile=${ENV_FILE}
-ExecStart=${BIN_DIR}/agents-server
+ExecStart=${BIN_DIR}/pulsar-server
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=30
@@ -115,7 +115,7 @@ ProtectKernelTunables=true
 ProtectControlGroups=true
 CapabilityBoundingSet=
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-ReadWritePaths=/var/lib/agents /var/log/agents
+ReadWritePaths=/var/lib/pulsar /var/log/pulsar
 
 [Install]
 WantedBy=multi-user.target
@@ -123,19 +123,19 @@ EOF
 fi
 
 if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "boxer" ]]; then
-  write_file /etc/systemd/system/agents-boxer.service <<EOF
+  write_file /etc/systemd/system/pulsar-boxer.service <<EOF
 [Unit]
-Description=Agents Boxer Sandbox Supervisor
+Description=Pulsar Boxer Sandbox Supervisor
 After=network-online.target docker.service
 Wants=network-online.target docker.service
 
 [Service]
 Type=simple
-User=agents
-Group=agents
-Environment="OTEL_SERVICE_NAME=agents-boxer"
+User=pulsar
+Group=pulsar
+Environment="OTEL_SERVICE_NAME=pulsar-boxer"
 EnvironmentFile=${ENV_FILE}
-ExecStart=${BIN_DIR}/agents-boxer
+ExecStart=${BIN_DIR}/pulsar-boxer
 Restart=on-failure
 RestartSec=3
 TimeoutStopSec=30
@@ -148,33 +148,33 @@ ProtectKernelTunables=true
 ProtectControlGroups=true
 CapabilityBoundingSet=
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-ReadWritePaths=/var/lib/agents /var/log/agents
+ReadWritePaths=/var/lib/pulsar /var/log/pulsar
 
 [Install]
 WantedBy=multi-user.target
 EOF
 fi
 
-write_file /etc/logrotate.d/agents <<'EOF'
-/var/log/agents/*.log {
+write_file /etc/logrotate.d/pulsar <<'EOF'
+/var/log/pulsar/*.log {
   daily
   rotate 14
   compress
   delaycompress
   missingok
   notifempty
-  create 0640 agents agents
+  create 0640 pulsar pulsar
 }
 EOF
 
 run_cmd systemctl daemon-reload
 if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "server" ]]; then
-  run_cmd systemctl enable --now agents-server.service
-  run_cmd systemctl restart agents-server.service
+  run_cmd systemctl enable --now pulsar-server.service
+  run_cmd systemctl restart pulsar-server.service
 fi
 if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "boxer" ]]; then
-  run_cmd systemctl enable --now agents-boxer.service
-  run_cmd systemctl restart agents-boxer.service
+  run_cmd systemctl enable --now pulsar-boxer.service
+  run_cmd systemctl restart pulsar-boxer.service
 fi
 
 echo "[PASS] Hardened systemd units and logrotate installed for role=${ROLE}"

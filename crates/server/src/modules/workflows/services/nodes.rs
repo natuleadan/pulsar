@@ -1,6 +1,6 @@
 //! Execution dispatcher for distinct workflow node kinds.
 
-use agents_protocol::{ExecOptions, InteractionMode, TaskRequest, WorkflowNode};
+use pulsar_protocol::{ExecOptions, InteractionMode, TaskRequest, WorkflowNode};
 use serde_json::{Value, json};
 
 use crate::{
@@ -35,7 +35,7 @@ pub async fn execute_single_node(
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .map_err(|e| ServerError::Internal(format!("http client: {e}")))?;
-            let install_id = std::env::var("AGENTS_INSTALLATION_ID")
+            let install_id = std::env::var("PULSAR_INSTALLATION_ID")
                 .ok()
                 .filter(|s| !s.trim().is_empty())
                 .unwrap_or_else(|| "local-dev".to_owned());
@@ -52,13 +52,13 @@ pub async fn execute_single_node(
                 _ => client.get(url),
             };
             req_builder = req_builder
-                .header("X-Agents-Installation-Id", install_id)
-                .header("X-Agents-Workflow-Id", &run.workflow_id)
-                .header("X-Agents-Workflow-Run-Id", &run.run_id);
-            if let Ok(org) = std::env::var("AGENTS_ORG_NAME")
+                .header("X-Pulsar-Installation-Id", install_id)
+                .header("X-Pulsar-Workflow-Id", &run.workflow_id)
+                .header("X-Pulsar-Workflow-Run-Id", &run.run_id);
+            if let Ok(org) = std::env::var("PULSAR_ORG_NAME")
                 && !org.trim().is_empty()
             {
-                req_builder = req_builder.header("X-Agents-Org", org.trim());
+                req_builder = req_builder.header("X-Pulsar-Org", org.trim());
             }
             let start = std::time::Instant::now();
             let resp = req_builder.send().await;

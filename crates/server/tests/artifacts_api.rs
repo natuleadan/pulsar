@@ -9,7 +9,7 @@ use common::{build_test_harness, register_and_login, send_json, send_json_with_h
 use serde_json::json;
 use tower::ServiceExt as _;
 
-use agents_server::ServerConfig;
+use pulsar_server::ServerConfig;
 
 #[tokio::test]
 async fn task_artifacts_worker_upload_presign_download_and_bola() {

@@ -1,15 +1,15 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use agents_client::core::{
-    ActiveView, AppAction, AppState, AuthState, BackendMode, ClusterNodeEntry, UpdateInfo, dispatch,
-};
-use agents_client::styles::{SurfaceMetrics, TargetPlatform};
-use agents_client::ui::render_app_shell;
-use agents_server::{InfrastructureHandles, ServerConfig, build_application};
 use axum::{
     body::{Body, to_bytes},
     http::Request,
 };
+use pulsar_client::core::{
+    ActiveView, AppAction, AppState, AuthState, BackendMode, ClusterNodeEntry, UpdateInfo, dispatch,
+};
+use pulsar_client::styles::{SurfaceMetrics, TargetPlatform};
+use pulsar_client::ui::render_app_shell;
+use pulsar_server::{InfrastructureHandles, ServerConfig, build_application};
 use tower::ServiceExt;
 
 #[test]
@@ -33,7 +33,7 @@ fn login_screen_error_states_cluster_table_and_trace_render_cleanly() {
     dispatch(
         &mut state,
         AppAction::SetLoginMode(BackendMode::ThirdParty {
-            provider: agents_protocol::ThirdPartyProvider::Daytona,
+            provider: pulsar_protocol::ThirdPartyProvider::Daytona,
             endpoint: "https://daytona.example.com".to_owned(),
         }),
     );

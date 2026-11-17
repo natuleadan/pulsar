@@ -1,7 +1,7 @@
 //! Domain entities for registered VLAN Boxer nodes and distributed preview routes.
 
-use agents_protocol::{BoxerNodeAnnouncement, PreviewRouteSync};
 use ironic::OpenApiSchema;
+use pulsar_protocol::{BoxerNodeAnnouncement, PreviewRouteSync};
 use serde::{Deserialize, Serialize};
 
 /// Snapshot of active auto-registered VLAN worker nodes.

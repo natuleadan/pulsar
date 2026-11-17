@@ -3,11 +3,11 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{
+use ironic::prelude::*;
+use pulsar_protocol::{
     API_GENERATION, Capability, CodecId, EventEnvelope, HandshakeRequest, HandshakeResponse,
     StreamPayload,
 };
-use ironic::prelude::*;
 use tokio::sync::broadcast;
 
 use crate::{

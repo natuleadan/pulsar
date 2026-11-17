@@ -5,8 +5,8 @@ pub mod cron;
 
 use std::sync::Arc;
 
-use agents_protocol::{StreamPayload, TriggerKind};
 use ironic::prelude::*;
+use pulsar_protocol::{StreamPayload, TriggerKind};
 use serde_json::{Value, json};
 
 use crate::{

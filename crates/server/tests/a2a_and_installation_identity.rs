@@ -4,13 +4,6 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{
-    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
-};
-use agents_server::{
-    app::{InfrastructureHandles, build_application},
-    infra::config::ServerConfig,
-};
 use axum::{
     Json, Router,
     body::Body,
@@ -18,6 +11,13 @@ use axum::{
     routing::post,
 };
 use http_body_util::BodyExt;
+use pulsar_protocol::{
+    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
+};
+use pulsar_server::{
+    app::{InfrastructureHandles, build_application},
+    infra::config::ServerConfig,
+};
 use serde_json::{Value, json};
 use tokio::{net::TcpListener, sync::Mutex};
 use tower::ServiceExt;
@@ -94,7 +94,7 @@ async fn a2a_agent_card_exposes_organization_and_identity_extension() {
     let card_req = Request::builder()
         .method("GET")
         .uri("/.well-known/agent-card.json")
-        .header("host", "agents.example.com")
+        .header("host", "pulsar.example.com")
         .body(Body::empty())
         .expect("card req");
     let card_resp = router.clone().oneshot(card_req).await.expect("card resp");
@@ -104,11 +104,11 @@ async fn a2a_agent_card_exposes_organization_and_identity_extension() {
     assert_eq!(card["provider"]["organization"], "Acme Corp");
     assert_eq!(
         card["supportedInterfaces"][0]["url"],
-        "https://agents.example.com/a2a"
+        "https://pulsar.example.com/a2a"
     );
     assert_eq!(
         card["capabilities"]["extensions"][0]["uri"],
-        "urn:agents:installation-identity:v1"
+        "urn:pulsar:installation-identity:v1"
     );
 }
 

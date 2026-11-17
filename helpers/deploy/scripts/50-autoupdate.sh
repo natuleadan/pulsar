@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Automated rolling update for agents-server and agents-boxer daemons.
+# Automated rolling update for pulsar-server and pulsar-boxer daemons.
 # Fetches release-packaged binaries from GitHub Releases without local compilation.
 
-REPO="${AGENTS_REPO:-natuleadan/agents}"
-RELEASE_TAG="${AGENTS_RELEASE_TAG:-nightly-dev}"
-STATE_FILE="${AGENTS_STATE_FILE:-/etc/agents/installed-sha}"
-BIN_DIR="${AGENTS_BIN_DIR:-/usr/local/bin}"
-HEALTH_URL="${AGENTS_HEALTH_URL:-http://127.0.0.1:8080/health/ready}"
-DRY_RUN="${AGENTS_DRY_RUN:-0}"
+REPO="${PULSAR_REPO:-natuleadan/pulsar}"
+RELEASE_TAG="${PULSAR_RELEASE_TAG:-nightly-dev}"
+STATE_FILE="${PULSAR_STATE_FILE:-/etc/pulsar/installed-sha}"
+BIN_DIR="${PULSAR_BIN_DIR:-/usr/local/bin}"
+HEALTH_URL="${PULSAR_HEALTH_URL:-http://127.0.0.1:8080/health/ready}"
+DRY_RUN="${PULSAR_DRY_RUN:-0}"
 CHECK_ONLY="0"
 INSTALL_TIMER="0"
 
@@ -64,31 +64,31 @@ fi
 
 if [[ "${INSTALL_TIMER}" == "1" ]]; then
   if [[ "${DRY_RUN}" == "1" ]]; then
-    echo "[DRY-RUN] install ${BIN_DIR}/agents-autoupdate and enable systemd agents-autoupdate.timer"
+    echo "[DRY-RUN] install ${BIN_DIR}/pulsar-autoupdate and enable systemd pulsar-autoupdate.timer"
     exit 0
   fi
   echo "[INFO] Installing systemd autoupdate timer..."
   install -d -m 0755 "${BIN_DIR}"
-  if [[ "$(readlink -f "${BASH_SOURCE[0]}")" != "$(readlink -f "${BIN_DIR}/agents-autoupdate" 2>/dev/null || true)" ]]; then
-    install -m 0755 "${BASH_SOURCE[0]}" "${BIN_DIR}/agents-autoupdate"
+  if [[ "$(readlink -f "${BASH_SOURCE[0]}")" != "$(readlink -f "${BIN_DIR}/pulsar-autoupdate" 2>/dev/null || true)" ]]; then
+    install -m 0755 "${BASH_SOURCE[0]}" "${BIN_DIR}/pulsar-autoupdate"
   fi
 
-  cat >/etc/systemd/system/agents-autoupdate.service <<EOF
+  cat >/etc/systemd/system/pulsar-autoupdate.service <<EOF
 [Unit]
-Description=Agents Rolling Nightly Autoupdater
+Description=Pulsar Rolling Nightly Autoupdater
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=${BIN_DIR}/agents-autoupdate --apply
+ExecStart=${BIN_DIR}/pulsar-autoupdate --apply
 StandardOutput=journal
 StandardError=journal
 EOF
 
-  cat >/etc/systemd/system/agents-autoupdate.timer <<'EOF'
+  cat >/etc/systemd/system/pulsar-autoupdate.timer <<'EOF'
 [Unit]
-Description=Periodic Check for Agents Nightly Updates
+Description=Periodic Check for Pulsar Nightly Updates
 
 [Timer]
 OnBootSec=2min
@@ -101,7 +101,7 @@ WantedBy=timers.target
 EOF
 
   systemctl daemon-reload
-  systemctl enable --now agents-autoupdate.timer
+  systemctl enable --now pulsar-autoupdate.timer
   echo "[PASS] Systemd autoupdate timer installed and active (runs every 5 minutes)."
   exit 0
 fi
@@ -120,7 +120,7 @@ echo "[INFO] Current installed SHA: ${CURRENT_SHA:-unknown}"
 echo "[INFO] Latest upstream dev SHA: ${LATEST_SHA:-unknown}"
 
 if [[ -n "${LATEST_SHA}" && "${LATEST_SHA}" == "${CURRENT_SHA}" ]]; then
-  echo "[PASS] Agents daemons already at latest dev commit: ${CURRENT_SHA}"
+  echo "[PASS] Pulsar daemons already at latest dev commit: ${CURRENT_SHA}"
   exit 0
 fi
 
@@ -129,8 +129,8 @@ if [[ "${CHECK_ONLY}" == "1" ]]; then
   exit 0
 fi
 
-TARBALL_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}/agents-daemons-x86_64-unknown-linux-gnu.tar.gz"
-TMP_DIR=$(mktemp -d /tmp/agents-update-XXXXXX)
+TARBALL_URL="https://github.com/${REPO}/releases/download/${RELEASE_TAG}/pulsar-daemons-x86_64-unknown-linux-gnu.tar.gz"
+TMP_DIR=$(mktemp -d /tmp/pulsar-update-XXXXXX)
 trap 'rm -rf "${TMP_DIR}"' EXIT
 
 echo "[INFO] Downloading release package from ${TARBALL_URL}..."
@@ -139,25 +139,25 @@ curl -fsSL "${TARBALL_URL}" -o "${TMP_DIR}/daemons.tar.gz"
 echo "[INFO] Extracting release binaries..."
 tar -xzf "${TMP_DIR}/daemons.tar.gz" -C "${TMP_DIR}"
 
-if [[ ! -f "${TMP_DIR}/agents-server" || ! -f "${TMP_DIR}/agents-boxer" ]]; then
-  echo "[FAIL] Downloaded package does not contain agents-server or agents-boxer" >&2
+if [[ ! -f "${TMP_DIR}/pulsar-server" || ! -f "${TMP_DIR}/pulsar-boxer" ]]; then
+  echo "[FAIL] Downloaded package does not contain pulsar-server or pulsar-boxer" >&2
   exit 1
 fi
 
 # Backup existing binaries if present
-BACKUP_DIR="/var/lib/agents/backup"
+BACKUP_DIR="/var/lib/pulsar/backup"
 mkdir -p "${BACKUP_DIR}"
-if [[ -f "${BIN_DIR}/agents-server" ]]; then
-  cp -p "${BIN_DIR}/agents-server" "${BACKUP_DIR}/agents-server.prev"
+if [[ -f "${BIN_DIR}/pulsar-server" ]]; then
+  cp -p "${BIN_DIR}/pulsar-server" "${BACKUP_DIR}/pulsar-server.prev"
 fi
-if [[ -f "${BIN_DIR}/agents-boxer" ]]; then
-  cp -p "${BIN_DIR}/agents-boxer" "${BACKUP_DIR}/agents-boxer.prev"
+if [[ -f "${BIN_DIR}/pulsar-boxer" ]]; then
+  cp -p "${BIN_DIR}/pulsar-boxer" "${BACKUP_DIR}/pulsar-boxer.prev"
 fi
 
 # Atomic install (unlinks inode so text file busy error is avoided)
 echo "[INFO] Installing binaries to ${BIN_DIR}..."
-install -m 0755 "${TMP_DIR}/agents-server" "${BIN_DIR}/agents-server"
-install -m 0755 "${TMP_DIR}/agents-boxer" "${BIN_DIR}/agents-boxer"
+install -m 0755 "${TMP_DIR}/pulsar-server" "${BIN_DIR}/pulsar-server"
+install -m 0755 "${TMP_DIR}/pulsar-boxer" "${BIN_DIR}/pulsar-boxer"
 
 # Record installed SHA
 mkdir -p "$(dirname "${STATE_FILE}")"
@@ -165,7 +165,7 @@ echo "${LATEST_SHA}" >"${STATE_FILE}"
 
 # Restart systemd daemons
 echo "[INFO] Restarting systemd daemons..."
-systemctl restart agents-server agents-boxer
+systemctl restart pulsar-server pulsar-boxer
 
 # Verify health check
 echo "[INFO] Verifying health check on ${HEALTH_URL}..."
@@ -180,14 +180,14 @@ for attempt in $(seq 1 15); do
 done
 
 if [[ "${HEALTHY}" -eq 1 ]]; then
-  echo "[PASS] Successfully updated agents to ${LATEST_SHA}. Daemons active and healthy."
+  echo "[PASS] Successfully updated Pulsar to ${LATEST_SHA}. Daemons active and healthy."
 else
   echo "[WARN] Health check did not pass within 15s. Rolling back..." >&2
-  if [[ -f "${BACKUP_DIR}/agents-server.prev" ]]; then
-    install -m 0755 "${BACKUP_DIR}/agents-server.prev" "${BIN_DIR}/agents-server"
-    install -m 0755 "${BACKUP_DIR}/agents-boxer.prev" "${BIN_DIR}/agents-boxer"
-    systemctl restart agents-server agents-boxer
+  if [[ -f "${BACKUP_DIR}/pulsar-server.prev" ]]; then
+    install -m 0755 "${BACKUP_DIR}/pulsar-server.prev" "${BIN_DIR}/pulsar-server"
+    install -m 0755 "${BACKUP_DIR}/pulsar-boxer.prev" "${BIN_DIR}/pulsar-boxer"
+    systemctl restart pulsar-server pulsar-boxer
   fi
-  echo "[FAIL] Rollback complete. Inspect systemctl status agents-server." >&2
+  echo "[FAIL] Rollback complete. Inspect systemctl status pulsar-server." >&2
   exit 1
 fi

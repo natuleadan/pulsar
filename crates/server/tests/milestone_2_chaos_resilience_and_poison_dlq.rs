@@ -2,8 +2,8 @@
 
 use std::time::Duration;
 
-use agents_protocol::{DlqDecision, FencingToken, PoisonMessageFilter, StopReason, TaskState};
-use agents_server::{
+use pulsar_protocol::{DlqDecision, FencingToken, PoisonMessageFilter, StopReason, TaskState};
+use pulsar_server::{
     infra::{error::ServerError, state::now_ms},
     modules::tasks::{
         entities::TaskEntity,
@@ -23,7 +23,7 @@ async fn test_chaos_worker_crash_and_lease_reclamation() {
         owner_id: "user-auditor".into(),
         prompt: "echo 'critical long running task'".into(),
         state: TaskState::Queued,
-        mode: agents_protocol::InteractionMode::Act,
+        mode: pulsar_protocol::InteractionMode::Act,
         fencing_token: FencingToken(1),
         lease_holder: None,
         lease_expires_at: None,

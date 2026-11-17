@@ -1,4 +1,4 @@
-name: Validate Agents
+name: Validate Pulsar
 
 on:
   push:
@@ -136,7 +136,7 @@ jobs:
         run: |
           cargo build --release --workspace
           mkdir -p dist
-          tar -czf dist/agents_x86_64-unknown-linux-gnu.tar.gz -C target/release agents-server agents-boxer agents-installer agents-client
+          tar -czf dist/pulsar_x86_64-unknown-linux-gnu.tar.gz -C target/release pulsar-server pulsar-boxer pulsar-installer pulsar-client
           (cd dist && sha256sum *.tar.gz > SHA256SUMS)
 
       - name: Tag and push

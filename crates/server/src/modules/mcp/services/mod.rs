@@ -3,8 +3,8 @@
 
 use std::{sync::Arc, time::Duration};
 
-use agents_protocol::ApiKeyScope;
 use ironic::{McpRouter, McpTool, prelude::*};
+use pulsar_protocol::ApiKeyScope;
 use serde_json::{Value, json};
 
 use crate::{
@@ -197,7 +197,7 @@ impl McpHostService {
                 Box::pin(async move {
                     Ok(json!({
                         "status": "ok",
-                        "apiGeneration": agents_protocol::API_GENERATION,
+                        "apiGeneration": pulsar_protocol::API_GENERATION,
                     }))
                 })
             }),
@@ -336,7 +336,7 @@ impl McpHostService {
         );
 
         McpRouter::new()
-            .with_name("agents-server-mcp")
+            .with_name("pulsar-server-mcp")
             .with_version(env!("CARGO_PKG_VERSION"))
             .register_tools(vec![
                 health_tool,

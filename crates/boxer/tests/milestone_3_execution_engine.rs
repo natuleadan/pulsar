@@ -2,7 +2,7 @@
 
 use std::{sync::Arc, time::Duration};
 
-use agents_boxer::{
+use pulsar_boxer::{
     error::BoxerError,
     leases::BoxFuture,
     runtime::{
@@ -12,7 +12,7 @@ use agents_boxer::{
     },
     sandbox::{FileMutationQueue, MutationQueueError},
 };
-use agents_protocol::{
+use pulsar_protocol::{
     EventEnvelope, FollowUpMessage, InteractionMode, PermissionMask, SteeringMessage, StopReason,
 };
 use serde_json::{Value, json};
@@ -190,7 +190,7 @@ async fn validated_structured_output_corrective_retries_and_exhaustion() {
 
 #[tokio::test]
 async fn file_mutation_queue_realpath_serialization_optimistic_conflict_and_reconcile() {
-    let dir = std::env::temp_dir().join(format!("agents-mutq-{}", uuid::Uuid::new_v4()));
+    let dir = std::env::temp_dir().join(format!("pulsar-mutq-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&dir).unwrap();
     let file_path = dir.join("shared.txt");
 

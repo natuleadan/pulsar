@@ -8,7 +8,7 @@ pub mod scanner;
 pub mod vcs;
 
 use crate::infra::error::ServerError;
-use agents_protocol::{AgentCard, AgentCardEndpoints, PluginManifest, PluginToolDefinition};
+use pulsar_protocol::{AgentCard, AgentCardEndpoints, PluginManifest, PluginToolDefinition};
 use std::collections::HashMap;
 use tokio::sync::RwLock;
 
@@ -85,8 +85,8 @@ impl PluginRegistry {
         capabilities.insert("agent:a2a".to_owned());
 
         AgentCard {
-            id: "agents-sovereign-node".to_owned(),
-            name: "Agents Sovereign Node".to_owned(),
+            id: "pulsar-sovereign-node".to_owned(),
+            name: "Pulsar Sovereign Node".to_owned(),
             description: "Sovereign AI Agent Orchestrator with Boxer Sandboxes and MCP Gateway"
                 .to_owned(),
             version: env!("CARGO_PKG_VERSION").to_owned(),

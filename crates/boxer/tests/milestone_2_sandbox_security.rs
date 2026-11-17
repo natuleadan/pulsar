@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use agents_boxer::{
+use pulsar_boxer::{
     daemon::{
         SessionToolMask, SystemOneDecisionKind, WatchdogAction, WatchdogTelemetrySample,
         evaluate_system_one_watchdog,
@@ -21,7 +21,7 @@ use serde_json::json;
 
 #[test]
 fn native_landlock_and_seatbelt_profiles_enforce_confined_paths() {
-    let ws = Path::new("/tmp/agents-boxes/ses_01");
+    let ws = Path::new("/tmp/pulsar-boxes/ses_01");
     let skills = Path::new("/opt/skills");
     let landlock = build_linux_landlock_spec(ws, Some(skills), Some(4040));
 
@@ -29,7 +29,7 @@ fn native_landlock_and_seatbelt_profiles_enforce_confined_paths() {
     assert_eq!(landlock.allowed_loopback_port, Some(4040));
     assert!(
         landlock
-            .verify_path_access(Path::new("/tmp/agents-boxes/ses_01/src/main.rs"), true)
+            .verify_path_access(Path::new("/tmp/pulsar-boxes/ses_01/src/main.rs"), true)
             .is_ok()
     );
     assert!(
@@ -142,7 +142,7 @@ fn dynamic_tool_mask_turn_boundary_and_30s_system_one_watchdog() {
         cpu_usage_permille: 850,
         memory_delta_kb: 4096,
         last_tool_name: Some("shell".to_owned()),
-        stdout_tail: "   Compiling agents-server v0.0.0".to_owned(),
+        stdout_tail: "   Compiling pulsar-server v0.0.0".to_owned(),
     };
     let v_compile = evaluate_system_one_watchdog(&compiling_sample);
     assert_eq!(v_compile.decision, SystemOneDecisionKind::CompilingLongTask);
@@ -163,7 +163,7 @@ fn dynamic_tool_mask_turn_boundary_and_30s_system_one_watchdog() {
 
 #[test]
 fn git_worktree_soft_sandbox_lifecycle_and_escalation() {
-    let tmp = std::env::temp_dir().join(format!("agents-wt-test-{}", uuid::Uuid::new_v4()));
+    let tmp = std::env::temp_dir().join(format!("pulsar-wt-test-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&tmp).unwrap();
 
     let wt = create_git_worktree_sandbox(&tmp, "refactor_01").unwrap();

@@ -1,4 +1,4 @@
-//! OpenAPI 3.1 contract specification for the Boxer HTTP control plane (`agents-boxer`).
+//! OpenAPI 3.1 contract specification for the Boxer HTTP control plane (`pulsar-boxer`).
 
 use serde_json::{Value, json};
 
@@ -344,7 +344,7 @@ pub fn boxer_openapi_spec() -> Value {
     json!({
         "openapi": "3.1.0",
         "info": {
-            "title": "agents-boxer API",
+            "title": "pulsar-boxer API",
             "version": env!("CARGO_PKG_VERSION"),
             "description": "Internal sandbox supervisor and execution daemon control plane"
         },

@@ -1,4 +1,4 @@
-use agents_server::modules::plugins::vcs::{
+use pulsar_server::modules::plugins::vcs::{
     CheckRunStatus, MockVcsState, PullRequestSummary, VcsError, VcsProxy,
 };
 
@@ -29,11 +29,11 @@ async fn test_vcs_proxy_lists_prs_and_diff_without_leaking_secrets() {
 
     proxy.set_mock_state(state).await;
 
-    let prs = proxy.list_pull_requests("natuleadan/agents").await.unwrap();
+    let prs = proxy.list_pull_requests("natuleadan/pulsar").await.unwrap();
     assert_eq!(prs.len(), 1);
     assert_eq!(prs[0].number, 42);
 
-    let diff = proxy.get_pr_diff("natuleadan/agents", 42).await.unwrap();
+    let diff = proxy.get_pr_diff("natuleadan/pulsar", 42).await.unwrap();
     assert!(diff.contains("pub fn new_feature"));
 
     let summary = proxy.generate_review_summary(42, &diff);
@@ -54,7 +54,7 @@ async fn test_vcs_proxy_handles_rate_limits_gracefully() {
 
     proxy.set_mock_state(state).await;
 
-    let res = proxy.list_pull_requests("natuleadan/agents").await;
+    let res = proxy.list_pull_requests("natuleadan/pulsar").await;
     match res {
         Err(VcsError::RateLimited(secs)) => assert_eq!(secs, 45),
         _ => panic!("Expected RateLimited error"),
@@ -70,7 +70,7 @@ async fn test_vcs_proxy_returns_check_runs() {
         "abc1234".to_string(),
         vec![
             CheckRunStatus {
-                name: "Validate Agents".to_string(),
+                name: "Validate Pulsar".to_string(),
                 status: "completed".to_string(),
                 conclusion: Some("success".to_string()),
             },
@@ -85,7 +85,7 @@ async fn test_vcs_proxy_returns_check_runs() {
     proxy.set_mock_state(state).await;
 
     let checks = proxy
-        .get_check_runs("natuleadan/agents", "abc1234")
+        .get_check_runs("natuleadan/pulsar", "abc1234")
         .await
         .unwrap();
     assert_eq!(checks.len(), 2);

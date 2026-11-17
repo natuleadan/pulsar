@@ -1,7 +1,7 @@
 //! Swarm domain entities representing delegated subagents and mediated messages.
 
-use agents_protocol::{AgentHandoff, PermissionMask};
 use ironic::OpenApiSchema;
+use pulsar_protocol::{AgentHandoff, PermissionMask};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

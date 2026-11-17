@@ -5,7 +5,7 @@ pub mod theme;
 pub mod widgets;
 
 use crate::core::state::{ActiveView, AppAction, AppState};
-use agents_protocol::SetupMode;
+use pulsar_protocol::SetupMode;
 
 pub use app::render_tui;
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]

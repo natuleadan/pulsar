@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use agents_protocol::ApiKeyScope;
 use ironic::OpenApiSchema;
+use pulsar_protocol::ApiKeyScope;
 use serde::{Deserialize, Serialize};
 
 /// Per-tool allowlist and required permission scope enforced before executing MCP calls.

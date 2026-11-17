@@ -2,13 +2,13 @@
 set -euo pipefail
 
 # Provision or update telemetry, OpenTelemetry collector wiring, and disk retention caps.
-ENV_FILE="${AGENTS_ENV_FILE:-/etc/agents/agents.env}"
-LOG_DIR="${AGENTS_LOG_DIR:-/var/log/agents}"
-ENABLE_OTEL="${AGENTS_ENABLE_OTEL:-0}"
-OTEL_ENDPOINT="${AGENTS_OTEL_ENDPOINT:-http://127.0.0.1:4317}"
-RETENTION_DAYS="${AGENTS_RETENTION_DAYS:-30}"
-MAX_DISK_PERCENT="${AGENTS_MAX_DISK_PERCENT:-10}"
-DRY_RUN="${AGENTS_DRY_RUN:-0}"
+ENV_FILE="${PULSAR_ENV_FILE:-/etc/pulsar/pulsar.env}"
+LOG_DIR="${PULSAR_LOG_DIR:-/var/log/pulsar}"
+ENABLE_OTEL="${PULSAR_ENABLE_OTEL:-0}"
+OTEL_ENDPOINT="${PULSAR_OTEL_ENDPOINT:-http://127.0.0.1:4317}"
+RETENTION_DAYS="${PULSAR_RETENTION_DAYS:-30}"
+MAX_DISK_PERCENT="${PULSAR_MAX_DISK_PERCENT:-10}"
+DRY_RUN="${PULSAR_DRY_RUN:-0}"
 
 usage() {
   cat <<'EOF'
@@ -50,7 +50,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-echo "[INFO] Configuring Agents Observability & Retention (OTEL=${ENABLE_OTEL}, retention=${RETENTION_DAYS}d, disk_cap=${MAX_DISK_PERCENT}%)"
+echo "[INFO] Configuring Pulsar Observability & Retention (OTEL=${ENABLE_OTEL}, retention=${RETENTION_DAYS}d, disk_cap=${MAX_DISK_PERCENT}%)"
 
 # Calculate filesystem capacity
 ROOT_FS_KB=$(df -k / | awk 'NR==2 {print $2}')
@@ -64,37 +64,37 @@ if [[ "${DRY_RUN}" != "1" && "$(id -u)" -ne 0 ]]; then
 fi
 
 if [[ "${DRY_RUN}" == "1" ]]; then
-  echo "[DRY-RUN] ensure ${LOG_DIR} exists with ownership agents:agents"
-  echo "[DRY-RUN] update ${ENV_FILE} with AGENTS_OTEL_ENDPOINT"
-  echo "[DRY-RUN] install /usr/local/bin/agents-log-prune and cron.daily"
+  echo "[DRY-RUN] ensure ${LOG_DIR} exists with ownership pulsar:pulsar"
+  echo "[DRY-RUN] update ${ENV_FILE} with PULSAR_OTEL_ENDPOINT"
+  echo "[DRY-RUN] install /usr/local/bin/pulsar-log-prune and cron.daily"
   exit 0
 fi
 
 # Ensure log directory exists
 mkdir -p "${LOG_DIR}"
-if id -u agents >/dev/null 2>&1; then
-  chown -R agents:agents "${LOG_DIR}"
+if id -u pulsar >/dev/null 2>&1; then
+  chown -R pulsar:pulsar "${LOG_DIR}"
 fi
 chmod 750 "${LOG_DIR}"
 
 # Update environment file if present
 if [[ -f "${ENV_FILE}" ]]; then
-  sed -i '/^AGENTS_LOG_DIR=/d' "${ENV_FILE}"
-  echo "AGENTS_LOG_DIR=${LOG_DIR}" >>"${ENV_FILE}"
+  sed -i '/^PULSAR_LOG_DIR=/d' "${ENV_FILE}"
+  echo "PULSAR_LOG_DIR=${LOG_DIR}" >>"${ENV_FILE}"
 
   if [[ "${ENABLE_OTEL}" == "1" ]]; then
-    sed -i '/^AGENTS_OTEL_ENDPOINT=/d' "${ENV_FILE}"
+    sed -i '/^PULSAR_OTEL_ENDPOINT=/d' "${ENV_FILE}"
     sed -i '/^OTLP_ENDPOINT=/d' "${ENV_FILE}"
     sed -i '/^OTEL_EXPORTER_OTLP_ENDPOINT=/d' "${ENV_FILE}"
     {
-      echo "AGENTS_OTEL_ENDPOINT=${OTEL_ENDPOINT}"
+      echo "PULSAR_OTEL_ENDPOINT=${OTEL_ENDPOINT}"
       echo "OTLP_ENDPOINT=${OTEL_ENDPOINT}"
       echo "OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_ENDPOINT}"
     } >>"${ENV_FILE}"
     echo "[INFO] Configured OTLP endpoint: ${OTEL_ENDPOINT}"
 
     if command -v docker >/dev/null 2>&1; then
-      OTEL_CFG="/etc/agents/otel-collector-config.yaml"
+      OTEL_CFG="/etc/pulsar/otel-collector-config.yaml"
       mkdir -p "$(dirname "${OTEL_CFG}")"
       cat >"${OTEL_CFG}" <<'OTEL_EOF'
 receivers:
@@ -116,15 +116,15 @@ service:
       processors: [batch]
       exporters: [debug]
 OTEL_EOF
-      docker rm -f agents-otel-collector >/dev/null 2>&1 || true
-      docker run -d --name agents-otel-collector --restart unless-stopped \
+      docker rm -f pulsar-otel-collector >/dev/null 2>&1 || true
+      docker run -d --name pulsar-otel-collector --restart unless-stopped \
         -p 127.0.0.1:4317:4317 -p 127.0.0.1:4318:4318 \
         -v "${OTEL_CFG}:/etc/otelcol-contrib/config.yaml:ro" \
         otel/opentelemetry-collector-contrib:0.120.0 >/dev/null
-      echo "[INFO] Started agents-otel-collector container on 127.0.0.1:4317 (gRPC) / 4318 (HTTP)"
+      echo "[INFO] Started pulsar-otel-collector container on 127.0.0.1:4317 (gRPC) / 4318 (HTTP)"
     fi
   else
-    sed -i '/^AGENTS_OTEL_ENDPOINT=/d' "${ENV_FILE}"
+    sed -i '/^PULSAR_OTEL_ENDPOINT=/d' "${ENV_FILE}"
     sed -i '/^OTLP_ENDPOINT=/d' "${ENV_FILE}"
     sed -i '/^OTEL_EXPORTER_OTLP_ENDPOINT=/d' "${ENV_FILE}"
     echo "[INFO] OTEL export disabled (local Prometheus /metrics + JSONL active)"
@@ -132,7 +132,7 @@ OTEL_EOF
 fi
 
 # Install daily log retention & disk quota pruning script
-cat >/usr/local/bin/agents-log-prune <<PRUNE_EOF
+cat >/usr/local/bin/pulsar-log-prune <<PRUNE_EOF
 #!/usr/bin/env bash
 set -euo pipefail
 # Prune logs older than ${RETENTION_DAYS} days or exceeding ${MAX_DISK_PERCENT}% disk cap
@@ -157,11 +157,11 @@ if [[ -d "\${LOG_DIR}" ]]; then
   done
 fi
 PRUNE_EOF
-chmod 755 /usr/local/bin/agents-log-prune
+chmod 755 /usr/local/bin/pulsar-log-prune
 
 # Register daily cron job
 if [[ -d /etc/cron.daily ]]; then
-  ln -sf /usr/local/bin/agents-log-prune /etc/cron.daily/agents-log-prune
+  ln -sf /usr/local/bin/pulsar-log-prune /etc/cron.daily/pulsar-log-prune
 fi
 
 echo "[PASS] Observability and log retention configured successfully."

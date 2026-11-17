@@ -3,10 +3,6 @@
 
 use std::{collections::HashMap, net::SocketAddr, sync::Arc};
 
-use agents_protocol::{
-    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
-    InstallationIdentityHeaders,
-};
 use axum::{
     Json, Router,
     body::Body,
@@ -21,6 +17,10 @@ use http_body_util::{BodyExt, Full};
 use hyper_util::{
     client::legacy::{Client, connect::HttpConnector},
     rt::TokioExecutor,
+};
+use pulsar_protocol::{
+    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
+    InstallationIdentityHeaders,
 };
 use serde::{Deserialize, Serialize};
 use tokio::{net::TcpListener, task::JoinHandle};
@@ -46,20 +46,20 @@ impl EgressIdentityPolicy {
     /// Loads installation identity headers from host environment variables.
     #[must_use]
     pub fn from_env() -> Self {
-        let org = std::env::var("AGENTS_ORG_NAME")
+        let org = std::env::var("PULSAR_ORG_NAME")
             .ok()
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty());
-        let id = std::env::var("AGENTS_INSTALLATION_ID")
+        let id = std::env::var("PULSAR_INSTALLATION_ID")
             .ok()
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty());
-        let code = std::env::var("AGENTS_IDENTITY_CODE")
+        let code = std::env::var("PULSAR_IDENTITY_CODE")
             .ok()
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty());
-        let strict = std::env::var("AGENTS_STRICT_OUTBOUND_EGRESS")
-            .or_else(|_| std::env::var("AGENTS_STRICT_EGRESS"))
+        let strict = std::env::var("PULSAR_STRICT_OUTBOUND_EGRESS")
+            .or_else(|_| std::env::var("PULSAR_STRICT_EGRESS"))
             .map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
             .unwrap_or(false);
 

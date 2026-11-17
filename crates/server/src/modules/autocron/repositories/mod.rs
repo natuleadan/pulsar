@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use agents_protocol::TriggerKind;
+use pulsar_protocol::TriggerKind;
 use sqlx::{PgPool, Row};
 use tokio::sync::Mutex;
 

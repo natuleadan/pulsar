@@ -8,7 +8,7 @@ use std::{
     },
 };
 
-use agents_protocol::ExecutionScope;
+use pulsar_protocol::ExecutionScope;
 
 use crate::infra::error::ServerError;
 

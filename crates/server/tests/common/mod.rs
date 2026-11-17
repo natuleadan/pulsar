@@ -2,7 +2,14 @@
 
 use std::sync::Arc;
 
-use agents_server::{
+use axum::{
+    Router,
+    body::Body,
+    http::{Method, Request, StatusCode},
+};
+use http_body_util::BodyExt;
+use ironic::{Application, OpenApiAxumApplication};
+use pulsar_server::{
     InfrastructureHandles, ServerConfig, build_application,
     infra::{
         adapters::{BlobStorePort, InMemoryVectorStore, LocalFsBlobStore, VectorStorePort},
@@ -23,13 +30,6 @@ use agents_server::{
         workflows::repositories::{InMemoryWorkflowRepository, WorkflowRepository, WorkflowStore},
     },
 };
-use axum::{
-    Router,
-    body::Body,
-    http::{Method, Request, StatusCode},
-};
-use http_body_util::BodyExt;
-use ironic::{Application, OpenApiAxumApplication};
 use serde_json::{Value, json};
 use tower::ServiceExt;
 
@@ -68,7 +68,7 @@ pub async fn build_test_harness_with_config(config: ServerConfig) -> TestHarness
 
     let vector: Arc<dyn VectorStorePort> = Arc::new(InMemoryVectorStore::new());
     let blob: Arc<dyn BlobStorePort> = Arc::new(LocalFsBlobStore::new(std::path::PathBuf::from(
-        "/tmp/agents-test-blobs",
+        "/tmp/pulsar-test-blobs",
     )));
 
     let infra = InfrastructureHandles {

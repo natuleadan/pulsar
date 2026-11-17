@@ -36,7 +36,7 @@ pub fn render_tui<B: Backend>(
     Ok(())
 }
 
-/// Interactive desktop terminal event loop using `crossterm` when running `agents-client tui`.
+/// Interactive desktop terminal event loop using `crossterm` when running `pulsar-client tui`.
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 pub fn run_terminal_tui(initial: AppState) -> Result<AppState, ClientError> {
     use crossterm::event::{self, Event, KeyCode, KeyModifiers};

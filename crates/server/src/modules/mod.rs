@@ -1,4 +1,4 @@
-//! Modular NestJS-inspired domain modules for `agents-server`.
+//! Modular NestJS-inspired domain modules for `pulsar-server`.
 
 pub mod a2a;
 pub mod artifacts;

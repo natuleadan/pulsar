@@ -1,13 +1,13 @@
 //! Centralized OpenAPI 3.1 configuration and component schema registry.
 
-use agents_protocol::{
+use ironic::{OpenApiConfig, SecurityScheme};
+use pulsar_protocol::{
     AgentLifecycleMode, AgentLifecyclePolicy, ApiKeyMetadata, ApiKeyScope, BoxerNodeAnnouncement,
     EventEnvelope, ExecOptions, FencingToken, FollowUpMessage, InteractionMode, IsolationKind,
     NodeStatus, PermissionMask, RuntimeKind, SandboxProfile, SetupMode, SteeringMessage,
     StopReason, TaskLease, TaskResult, TaskState, TokenPair, TraefikPreviewRoute, TriggerKind,
     WorkflowDag, WorkflowEdge, WorkflowNode,
 };
-use ironic::{OpenApiConfig, SecurityScheme};
 
 use crate::modules::{
     artifacts::dto::{
@@ -70,7 +70,7 @@ use crate::modules::{
 /// Builds and registers all domain component schemas into the OpenAPI 3.1 specification.
 #[must_use]
 pub fn configure_openapi() -> OpenApiConfig {
-    OpenApiConfig::new("agents-server API", env!("CARGO_PKG_VERSION"))
+    OpenApiConfig::new("pulsar-server API", env!("CARGO_PKG_VERSION"))
         .json_path("/openapi.raw.json")
         .description("Distributed agent harness control plane built on Ironic")
         .security_scheme(

@@ -200,11 +200,11 @@ if (!apply) {
 packageJson.version = expected;
 writeFileSync(PACKAGE, `${JSON.stringify(packageJson, null, 2)}\n`);
 
-const changelog = existsSync(CHANGELOG) ? readFileSync(CHANGELOG, "utf8") : "# natuleadan-agents\n\n";
+const changelog = existsSync(CHANGELOG) ? readFileSync(CHANGELOG, "utf8") : "# natuleadan-pulsar\n\n";
 if (!changelog.includes(`## ${expected}`)) {
   const entry = changelogEntry(expected, commits);
   const next = changelog
-    .replace(/^(# natuleadan-agents\n\n)/, `$1${entry}\n\n`)
+    .replace(/^(# natuleadan-pulsar\n\n)/, `$1${entry}\n\n`)
     .replace(/\n{3,}/g, "\n\n");
   writeFileSync(CHANGELOG, next);
 }

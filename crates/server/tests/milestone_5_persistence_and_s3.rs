@@ -2,8 +2,8 @@
 
 mod common;
 
-use agents_server::ServerConfig;
 use axum::http::{Method, StatusCode};
+use pulsar_server::ServerConfig;
 use serde_json::json;
 use sha2::{Digest, Sha256};
 

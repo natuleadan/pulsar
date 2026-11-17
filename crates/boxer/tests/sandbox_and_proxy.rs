@@ -1,17 +1,5 @@
 use std::{collections::HashMap, net::SocketAddr, path::PathBuf, time::Duration};
 
-use agents_boxer::{
-    config::{BoxerCli, BoxerConfig},
-    error::BoxerError,
-    proxy::{CredentialRule, OutboundCredentialProxy},
-    sandbox::{
-        DockerRuntimeDriver, HostRuntimeDriver, SandboxDriver, SandboxExecRequest,
-        build_sanitized_env, resolve_confined_workdir, validate_runtime_isolation,
-    },
-};
-use agents_protocol::{
-    ExecOptions, IsolationKind, RuntimeKind, SandboxProfile, SetupMode, ThirdPartyProvider,
-};
 use axum::{Router, extract::Request as AxumRequest, routing::get};
 use bytes::Bytes;
 use clap::Parser;
@@ -20,6 +8,18 @@ use http_body_util::{BodyExt, Full};
 use hyper_util::{
     client::legacy::{Client, connect::HttpConnector},
     rt::TokioExecutor,
+};
+use pulsar_boxer::{
+    config::{BoxerCli, BoxerConfig},
+    error::BoxerError,
+    proxy::{CredentialRule, OutboundCredentialProxy},
+    sandbox::{
+        DockerRuntimeDriver, HostRuntimeDriver, SandboxDriver, SandboxExecRequest,
+        build_sanitized_env, resolve_confined_workdir, validate_runtime_isolation,
+    },
+};
+use pulsar_protocol::{
+    ExecOptions, IsolationKind, RuntimeKind, SandboxProfile, SetupMode, ThirdPartyProvider,
 };
 use tokio::{net::TcpListener, sync::watch};
 
@@ -146,7 +146,7 @@ fn runtime_isolation_matrix_fails_closed() {
 #[test]
 fn boxer_config_rejects_public_proxy_bind_when_vlan_only() -> TestResult {
     let mut cli = BoxerCli::parse_from([
-        "agents-boxer",
+        "pulsar-boxer",
         "--node-id",
         "boxer-test-01",
         "--openshell-gateway-url",
@@ -197,7 +197,7 @@ fn sanitized_env_scrubs_secrets_from_allowlist_and_docker_spec_hardened() -> Tes
         max_cpus: Some(1),
         env_allowlist: vec![
             "OPENAI_API_KEY".to_owned(),
-            "AGENTS_JWT_SECRET".to_owned(),
+            "PULSAR_JWT_SECRET".to_owned(),
             "CUSTOM_TOKEN".to_owned(),
             "HOME".to_owned(),
         ],
@@ -206,7 +206,7 @@ fn sanitized_env_scrubs_secrets_from_allowlist_and_docker_spec_hardened() -> Tes
 
     let env = build_sanitized_env(&exec, Some("http://127.0.0.1:9999"));
     assert!(!env.contains_key("OPENAI_API_KEY"));
-    assert!(!env.contains_key("AGENTS_JWT_SECRET"));
+    assert!(!env.contains_key("PULSAR_JWT_SECRET"));
     assert!(!env.contains_key("CUSTOM_TOKEN"));
     assert!(
         !env.contains_key("HTTP_PROXY"),
@@ -214,7 +214,7 @@ fn sanitized_env_scrubs_secrets_from_allowlist_and_docker_spec_hardened() -> Tes
     );
 
     let root = unique_temp_dir("boxer-docker-spec")?;
-    let driver = DockerRuntimeDriver::new(root.clone(), "ghcr.io/natuleadan/agents-sandbox:v1");
+    let driver = DockerRuntimeDriver::new(root.clone(), "ghcr.io/natuleadan/pulsar-sandbox:v1");
     let spec = driver.build_command_spec(&SandboxExecRequest {
         task_id: "task-123".to_owned(),
         session_id: "sess-a".to_owned(),
@@ -240,7 +240,7 @@ fn sanitized_env_scrubs_secrets_from_allowlist_and_docker_spec_hardened() -> Tes
     assert!(spec.args.contains(&"--memory=256m".to_owned()));
     assert!(
         spec.args
-            .contains(&"agents.openshell.gateway=https://10.0.0.9:8443".to_owned())
+            .contains(&"pulsar.openshell.gateway=https://10.0.0.9:8443".to_owned())
     );
 
     let _ = std::fs::remove_dir_all(root);
@@ -271,7 +271,7 @@ async fn host_sandbox_hides_raw_secrets_and_terminates_process_group_on_cancel()
                 exec: ExecOptions {
                     env_allowlist: vec![
                         "OPENAI_API_KEY".to_owned(),
-                        "AGENTS_JWT_SECRET".to_owned(),
+                        "PULSAR_JWT_SECRET".to_owned(),
                     ],
                     timeout_seconds: Some(10),
                     ..Default::default()

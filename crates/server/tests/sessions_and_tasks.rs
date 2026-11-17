@@ -2,9 +2,9 @@
 
 mod common;
 
-use agents_protocol::{ExecutionScope, TaskState};
-use agents_server::{ServerConfig, modules::tasks::repositories::TaskRepository};
 use axum::http::{Method, StatusCode};
+use pulsar_protocol::{ExecutionScope, TaskState};
+use pulsar_server::{ServerConfig, modules::tasks::repositories::TaskRepository};
 use serde_json::json;
 
 use common::{build_test_harness, register_and_login, send_json, send_json_with_headers};

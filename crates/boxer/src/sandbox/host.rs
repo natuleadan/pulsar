@@ -11,7 +11,7 @@ use std::{
     time::Duration,
 };
 
-use agents_protocol::{IsolationKind, TaskStreamEvent};
+use pulsar_protocol::{IsolationKind, TaskStreamEvent};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,

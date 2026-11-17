@@ -5,7 +5,7 @@ set -euo pipefail
 ROLE="monolithic"
 VLAN_CIDR="10.0.0.0/8"
 SSH_PORT="22"
-DRY_RUN="${AGENTS_DRY_RUN:-0}"
+DRY_RUN="${PULSAR_DRY_RUN:-0}"
 
 usage() {
   cat <<'EOF'
@@ -92,8 +92,8 @@ else
   fi
 fi
 
-write_file /etc/ssh/sshd_config.d/99-agents-hardening.conf <<'EOF'
-# Managed by agents-installer
+write_file /etc/ssh/sshd_config.d/99-pulsar-hardening.conf <<'EOF'
+# Managed by pulsar-installer
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 ChallengeResponseAuthentication no
@@ -114,7 +114,7 @@ else
   echo "[DRY-RUN] sshd -t && systemctl reload ssh"
 fi
 
-write_file /etc/sysctl.d/99-agents-security.conf <<'EOF'
+write_file /etc/sysctl.d/99-pulsar-security.conf <<'EOF'
 net.ipv4.tcp_syncookies = 1
 net.ipv4.conf.all.rp_filter = 1
 net.ipv4.conf.default.rp_filter = 1
@@ -156,7 +156,7 @@ esac
 
 run_cmd ufw --force enable
 
-write_file /etc/fail2ban/jail.d/99-agents.local <<EOF
+write_file /etc/fail2ban/jail.d/99-pulsar.local <<EOF
 [sshd]
 enabled = true
 port = ${SSH_PORT}

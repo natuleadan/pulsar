@@ -1,21 +1,21 @@
-//! `agents-server` daemon entry point (`serve`, `migrate`, `doctor`, `schema`).
+//! `pulsar-server` daemon entry point (`serve`, `migrate`, `doctor`, `schema`).
 
 #![forbid(unsafe_code)]
 
 use std::{fs, path::PathBuf, time::Duration};
 
-use agents_protocol::export_protocol_schema;
-use agents_server::{
+use clap::{Parser, Subcommand};
+use pulsar_protocol::export_protocol_schema;
+use pulsar_server::{
     DoctorReport, InfrastructureHandles, MigrationSnapshot, ServerConfig,
     app::{start_autocron_worker, start_retention_worker},
     build_application, export_snapshot, import_snapshot, verify_database,
 };
-use clap::{Parser, Subcommand};
 use sqlx::postgres::PgPoolOptions;
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "agents-server",
+    name = "pulsar-server",
     version,
     about = "Distributed agent harness orchestrator daemon"
 )]
@@ -67,10 +67,10 @@ enum MigrateAction {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenvy::dotenv().ok();
-    let log_cfg = agents_server::infra::observability::LoggingConfig::default();
-    let apm_cfg = agents_server::infra::observability::ApmConfig::from_env();
+    let log_cfg = pulsar_server::infra::observability::LoggingConfig::default();
+    let apm_cfg = pulsar_server::infra::observability::ApmConfig::from_env();
     let _telemetry_guard =
-        agents_server::infra::observability::init_structured_logging(&log_cfg, &apm_cfg);
+        pulsar_server::infra::observability::init_structured_logging(&log_cfg, &apm_cfg);
 
     let cli = Cli::parse();
     match cli.command.unwrap_or(Command::Serve) {
@@ -163,7 +163,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let app = build_application(infra).await?;
             let retention_task = start_retention_worker(&app, Duration::from_secs(3600)).await?;
             let autocron_task = start_autocron_worker(&app, Duration::from_secs(15)).await?;
-            tracing::info!("agents-server listening on http://{bind_addr}");
+            tracing::info!("pulsar-server listening on http://{bind_addr}");
             let result = app.listen(&bind_addr).await;
             let _ = autocron_task.shutdown().await;
             let _ = retention_task.shutdown().await;

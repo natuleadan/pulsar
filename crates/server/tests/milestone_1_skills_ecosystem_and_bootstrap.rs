@@ -1,8 +1,8 @@
 //! Milestone 1 (Batch 8): Skills ecosystem, 4 built-in system skills,
 //! dynamic installation API, context budget enforcement, and static security scanning.
 
-use agents_protocol::{SkillInstallInput, SkillSource};
-use agents_server::{infra::error::ServerError, modules::skills::SkillService};
+use pulsar_protocol::{SkillInstallInput, SkillSource};
+use pulsar_server::{infra::error::ServerError, modules::skills::SkillService};
 
 #[tokio::test]
 async fn test_builtin_system_skills_bootstrapped_and_protected() {

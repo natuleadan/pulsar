@@ -2,9 +2,9 @@
 
 mod common;
 
-use agents_server::ServerConfig;
 use axum::http::{Method, StatusCode};
 use common::{build_test_harness, register_and_login, send_json};
+use pulsar_server::ServerConfig;
 use serde_json::json;
 
 #[tokio::test]

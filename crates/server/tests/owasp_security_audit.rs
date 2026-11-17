@@ -2,18 +2,18 @@
 
 mod common;
 
-use agents_protocol::{
-    IsolationKind, NodeStatus, PermissionMask, RuntimeKind, SandboxProfile, SetupMode,
-    TraefikPreviewRoute,
-};
-use agents_server::{
-    ServerConfig,
-    infra::config::ConfigError,
-    modules::auth::services::{constant_time_eq_hex, sha256_hex},
-};
 use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
+};
+use pulsar_protocol::{
+    IsolationKind, NodeStatus, PermissionMask, RuntimeKind, SandboxProfile, SetupMode,
+    TraefikPreviewRoute,
+};
+use pulsar_server::{
+    ServerConfig,
+    infra::config::ConfigError,
+    modules::auth::services::{constant_time_eq_hex, sha256_hex},
 };
 use tower::ServiceExt;
 
@@ -247,7 +247,7 @@ async fn owasp_top10_2025_bola_crypto_headers_ssrf_and_node_discovery() {
     let audit_svc = harness
         .app
         .container()
-        .resolve::<agents_server::modules::audit::services::AuditService>()
+        .resolve::<pulsar_server::modules::audit::services::AuditService>()
         .await
         .unwrap();
     let report = audit_svc.verify_chain().await.unwrap();
@@ -258,8 +258,8 @@ async fn owasp_top10_2025_bola_crypto_headers_ssrf_and_node_discovery() {
 fn owasp_asi_2026_and_fail_closed_crypto_invariants() {
     // Production config fails closed without >=32 byte secret and Postgres URL.
     let weak = ServerConfig::from_lookup(|k| match k {
-        "AGENTS_ENV" => Some("production".to_owned()),
-        "AGENTS_JWT_SECRET" => Some("short".to_owned()),
+        "PULSAR_ENV" => Some("production".to_owned()),
+        "PULSAR_JWT_SECRET" => Some("short".to_owned()),
         _ => None,
     });
     assert!(matches!(weak, Err(ConfigError::WeakJwtSecret)));
@@ -296,7 +296,7 @@ fn owasp_asi_2026_and_fail_closed_crypto_invariants() {
 
 #[tokio::test]
 async fn owasp_tasks_pagination_bola_and_s3_presign_traversal_block() {
-    use agents_server::infra::adapters::{BlobStorePort, S3BlobStore};
+    use pulsar_server::infra::adapters::{BlobStorePort, S3BlobStore};
 
     let harness = build_test_harness(ServerConfig::for_tests()).await;
     let (_, alice_jwt) = register_and_login(

@@ -1,11 +1,11 @@
 //! Validated DTOs for task submission, fencing leases, steering, and completion.
 
-use agents_protocol::{
+use garde::Validate;
+use ironic::OpenApiSchema;
+use pulsar_protocol::{
     AgentLifecyclePolicy, ExecOptions, FencingToken, InteractionMode, SandboxProfile,
     SteeringInterventionKind, StopReason, TaskState,
 };
-use garde::Validate;
-use ironic::OpenApiSchema;
 use serde::Deserialize;
 
 /// Request payload to enqueue a task in a session.

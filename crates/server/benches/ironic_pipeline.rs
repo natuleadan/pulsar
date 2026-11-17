@@ -3,13 +3,13 @@
 
 use std::hint::black_box;
 
-use agents_server::{
+use criterion::{Criterion, criterion_group, criterion_main};
+use ironic::{Module, ModuleDefinition, metrics::MetricsRegistry};
+use pulsar_server::{
     app::InfraModule,
     infra::{DomainMetrics, apply_observability_plugins},
     modules::auth::services::crypto::hash_password,
 };
-use criterion::{Criterion, criterion_group, criterion_main};
-use ironic::{Module, ModuleDefinition, metrics::MetricsRegistry};
 use sha2::{Digest, Sha256};
 
 fn bench_metrics(c: &mut Criterion) {
@@ -43,7 +43,7 @@ fn bench_crypto(c: &mut Criterion) {
     c.bench_function("crypto/sha256_token", |b| {
         b.iter(|| {
             let mut hasher = Sha256::new();
-            hasher.update(black_box(b"agents-token-sample-material"));
+            hasher.update(black_box(b"pulsar-token-sample-material"));
             black_box(hasher.finalize());
         });
     });

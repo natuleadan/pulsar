@@ -2,7 +2,9 @@
 
 use std::{collections::BTreeMap, sync::Arc};
 
-use agents_client::core::{
+use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use ed25519_dalek::{Signer, SigningKey};
+use pulsar_client::core::{
     BackendTarget, InMemorySecretStore, MockTransport, OtaPackageAsset, OtaSlotStore,
     PlatformAsset, ReleaseKeyCertificate, ReleaseManifest, RevocationList, ServerModeProvider,
     SignedOtaPackage, TrialDecision, UpdateError, UpdateKind, UpdaterConfig, check_manifest,
@@ -10,13 +12,11 @@ use agents_client::core::{
     updater::{certificate_signing_message, package_signing_message},
     verify_download_bytes, verify_signed_nshpkg,
 };
-use agents_client::ui::ClientController;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use ed25519_dalek::{Signer, SigningKey};
+use pulsar_client::ui::ClientController;
 
 fn temp_dir(label: &str) -> std::path::PathBuf {
     let p = std::env::temp_dir().join(format!(
-        "agents-updater-{label}-{}-{}",
+        "pulsar-updater-{label}-{}-{}",
         std::process::id(),
         std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -39,7 +39,7 @@ fn signed_manifest_verifies_ed25519_blocks_downgrade_and_skips_nightly_prereleas
         "macos-aarch64".to_owned(),
         PlatformAsset {
             url:
-                "https://github.com/natuleadan/agents/releases/download/v0.2.0/agents-client.tar.gz"
+                "https://github.com/natuleadan/pulsar/releases/download/v0.2.0/pulsar-client.tar.gz"
                     .to_owned(),
             sha256: archive_sha.clone(),
             size: archive.len() as u64,
@@ -48,14 +48,14 @@ fn signed_manifest_verifies_ed25519_blocks_downgrade_and_skips_nightly_prereleas
     platforms.insert(
         "android-apk".to_owned(),
         PlatformAsset {
-            url: "https://play.google.com/store/apps/details?id=dev.natuleadan.agents".to_owned(),
+            url: "https://play.google.com/store/apps/details?id=dev.natuleadan.pulsar".to_owned(),
             sha256: archive_sha.clone(),
             size: archive.len() as u64,
         },
     );
 
     let prod_manifest = ReleaseManifest {
-        id: "dev.natuleadan.agents".to_owned(),
+        id: "dev.natuleadan.pulsar".to_owned(),
         version: "0.2.0".to_owned(),
         notes: "Signed release v0.2.0".to_owned(),
         prerelease: false,
@@ -66,7 +66,7 @@ fn signed_manifest_verifies_ed25519_blocks_downgrade_and_skips_nightly_prereleas
     let prod_sig = BASE64.encode(update_sk.sign(&prod_bytes).to_bytes());
 
     let cfg = UpdaterConfig {
-        app_id: "dev.natuleadan.agents".to_owned(),
+        app_id: "dev.natuleadan.pulsar".to_owned(),
         current_version: "0.1.0".to_owned(),
         current_build: 1,
         current_runtime: "0.1.0".to_owned(),
@@ -129,13 +129,13 @@ fn signed_manifest_verifies_ed25519_blocks_downgrade_and_skips_nightly_prereleas
     // Controller wires manifest update into AppState UI
     let transport = Arc::new(MockTransport::default());
     let provider = Arc::new(ServerModeProvider::new(
-        "https://agents.example.com",
+        "https://pulsar.example.com",
         transport,
     ));
     let mut controller = ClientController::new(
         provider,
         Arc::new(InMemorySecretStore::default()),
-        BackendTarget::local_server("https://agents.example.com"),
+        BackendTarget::local_server("https://pulsar.example.com"),
     );
     assert!(
         controller
@@ -167,7 +167,7 @@ fn signed_nshpkg_two_level_chain_revocation_and_crash_rollback_work() {
 
     let make_pkg = |build: u64, ver: &str, payload: &[u8]| -> Vec<u8> {
         let mut pkg = SignedOtaPackage {
-            app_id: "dev.natuleadan.agents".to_owned(),
+            app_id: "dev.natuleadan.pulsar".to_owned(),
             version: ver.to_owned(),
             build,
             min_runtime: "0.1.0".to_owned(),
@@ -182,7 +182,7 @@ fn signed_nshpkg_two_level_chain_revocation_and_crash_rollback_work() {
     };
 
     let cfg = UpdaterConfig {
-        app_id: "dev.natuleadan.agents".to_owned(),
+        app_id: "dev.natuleadan.pulsar".to_owned(),
         current_version: "0.1.0".to_owned(),
         current_build: 1,
         current_runtime: "0.2.0".to_owned(),
@@ -266,7 +266,7 @@ fn signed_nshpkg_two_level_chain_revocation_and_crash_rollback_work() {
 
     // Loopback HTTP allowed; plain remote HTTP rejected in manifest check
     let bad_manifest = serde_json::to_vec(&ReleaseManifest {
-        id: "dev.natuleadan.agents".to_owned(),
+        id: "dev.natuleadan.pulsar".to_owned(),
         version: "0.9.0".to_owned(),
         notes: "bad".to_owned(),
         prerelease: false,

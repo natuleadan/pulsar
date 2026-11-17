@@ -6,13 +6,13 @@ import test from "node:test";
 import { createSignedManifest, keygen, verifySignedManifest } from "./release-manifest.mjs";
 
 test("release-manifest signs, verifies, and detects tampered manifests or artifacts", () => {
-  const dir = mkdtempSync(join(tmpdir(), "agents-manifest-test-"));
+  const dir = mkdtempSync(join(tmpdir(), "pulsar-manifest-test-"));
   try {
     const { pubPath, secPath } = keygen(join(dir, "keys/update"));
     mkdirSync(join(dir, "dist"), { recursive: true });
-    const linuxTar = join(dir, "dist/agents-client-linux-x86_64.tar.gz");
-    const macDmg = join(dir, "dist/agents-client-macos-aarch64.dmg");
-    const otaPkg = join(dir, "dist/dev.natuleadan.agents-2.nshpkg");
+    const linuxTar = join(dir, "dist/pulsar-client-linux-x86_64.tar.gz");
+    const macDmg = join(dir, "dist/pulsar-client-macos-aarch64.dmg");
+    const otaPkg = join(dir, "dist/dev.natuleadan.pulsar-2.nshpkg");
     writeFileSync(linuxTar, "linux-binary-contents");
     writeFileSync(macDmg, "macos-dmg-contents");
     writeFileSync(otaPkg, "signed-ota-bundle");
@@ -20,13 +20,13 @@ test("release-manifest signs, verifies, and detects tampered manifests or artifa
     const secretB64 = readFileSync(secPath, "utf8");
     const pubB64 = readFileSync(pubPath, "utf8");
     const res = createSignedManifest({
-      appId: "dev.natuleadan.agents",
+      appId: "dev.natuleadan.pulsar",
       version: "0.2.0",
       build: 2,
       minRuntime: "0.1.0",
       notes: "Automated release build",
       prerelease: false,
-      baseUrl: "https://github.com/natuleadan/agents/releases/download/v0.2.0",
+      baseUrl: "https://github.com/natuleadan/pulsar/releases/download/v0.2.0",
       secretB64,
       outDir: join(dir, "dist"),
       files: [linuxTar, macDmg, otaPkg],
@@ -38,7 +38,7 @@ test("release-manifest signs, verifies, and detects tampered manifests or artifa
       pubB64,
       assetsDir: join(dir, "dist"),
     });
-    assert.equal(verified.id, "dev.natuleadan.agents");
+    assert.equal(verified.id, "dev.natuleadan.pulsar");
     assert.equal(verified.version, "0.2.0");
     assert.equal(verified.package?.build, 2);
     assert.ok(verified.platforms["linux-x86_64"]);

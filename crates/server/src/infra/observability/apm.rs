@@ -22,7 +22,7 @@ pub struct ApmConfig {
 impl Default for ApmConfig {
     fn default() -> Self {
         Self {
-            service_name: "agents-server".to_owned(),
+            service_name: "pulsar-server".to_owned(),
             otlp_endpoint: None,
             sample_rate: 1.0,
             batch_interval_ms: 2000,
@@ -32,11 +32,11 @@ impl Default for ApmConfig {
 }
 
 impl ApmConfig {
-    /// Loads APM configuration from environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT` / `AGENTS_OTEL_ENDPOINT` / `OTLP_ENDPOINT`).
+    /// Loads APM configuration from environment variables (`OTEL_EXPORTER_OTLP_ENDPOINT` / `PULSAR_OTEL_ENDPOINT` / `OTLP_ENDPOINT`).
     #[must_use]
     pub fn from_env() -> Self {
         let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
-            .or_else(|_| std::env::var("AGENTS_OTEL_ENDPOINT"))
+            .or_else(|_| std::env::var("PULSAR_OTEL_ENDPOINT"))
             .or_else(|_| std::env::var("OTLP_ENDPOINT"))
             .ok()
             .map(|s| s.trim().to_owned())
@@ -46,16 +46,16 @@ impl ApmConfig {
             .ok()
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty())
-            .unwrap_or_else(|| "agents-server".to_owned());
+            .unwrap_or_else(|| "pulsar-server".to_owned());
 
-        let sample_rate = std::env::var("AGENTS_OTEL_SAMPLE_RATE")
+        let sample_rate = std::env::var("PULSAR_OTEL_SAMPLE_RATE")
             .or_else(|_| std::env::var("SAMPLE_RATE"))
             .ok()
             .and_then(|s| s.parse::<f64>().ok())
             .unwrap_or(1.0)
             .clamp(0.0, 1.0);
 
-        let batch_interval_ms = std::env::var("AGENTS_OTEL_BATCH_MS")
+        let batch_interval_ms = std::env::var("PULSAR_OTEL_BATCH_MS")
             .ok()
             .and_then(|s| s.parse::<u64>().ok())
             .unwrap_or(2000);

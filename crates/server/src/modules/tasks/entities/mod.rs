@@ -1,7 +1,7 @@
 //! Durable fenced task entity and strict state-machine transitions.
 
-use agents_protocol::{FencingToken, InteractionMode, StopReason, TaskState};
 use ironic::OpenApiSchema;
+use pulsar_protocol::{FencingToken, InteractionMode, StopReason, TaskState};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

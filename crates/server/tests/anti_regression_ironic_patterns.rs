@@ -15,7 +15,10 @@ use std::{
     time::Duration,
 };
 
-use agents_server::{
+use axum::http::{Method, StatusCode};
+use common::{build_test_harness, register_and_login, send_json};
+use ironic::services::scheduling::{cron_schedule, interval};
+use pulsar_server::{
     ServerConfig,
     infra::{
         cache::AppCache,
@@ -23,9 +26,6 @@ use agents_server::{
         state::now_ms,
     },
 };
-use axum::http::{Method, StatusCode};
-use common::{build_test_harness, register_and_login, send_json};
-use ironic::services::scheduling::{cron_schedule, interval};
 
 #[tokio::test]
 async fn anti_regression_ironic_native_scheduling_cooperative_lifecycle() {

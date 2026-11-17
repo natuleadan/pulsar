@@ -1,5 +1,5 @@
-use agents_protocol::{PluginCapabilityMask, PluginManifest, PluginToolDefinition};
-use agents_server::modules::{
+use pulsar_protocol::{PluginCapabilityMask, PluginManifest, PluginToolDefinition};
+use pulsar_server::modules::{
     mcp::{
         transpiler::OpenJsonTranspiler,
         validator::{ParameterValidator, ValidationError},

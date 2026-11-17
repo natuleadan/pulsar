@@ -26,7 +26,7 @@ impl HermeticSandbox {
     pub fn new() -> Result<Self, std::io::Error> {
         let count = COUNTER.fetch_add(1, Ordering::SeqCst);
         let pid = std::process::id();
-        let dirname = format!("agents-hermetic-{pid}-{count}");
+        let dirname = format!("pulsar-hermetic-{pid}-{count}");
         let root = std::env::temp_dir().join(dirname);
 
         let home = root.join("home");

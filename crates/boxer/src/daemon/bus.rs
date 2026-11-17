@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{BoxerNodeAnnouncement, EventEnvelope, PreviewRouteSync};
+use pulsar_protocol::{BoxerNodeAnnouncement, EventEnvelope, PreviewRouteSync};
 use tokio::sync::Mutex;
 
 use crate::{config::BoxerConfig, error::BoxerError, leases::BoxFuture};
@@ -55,7 +55,7 @@ impl NatsBoxerBus {
     pub async fn publish_swarm_p2p(
         &self,
         secret: &[u8],
-        msg: &agents_protocol::SwarmMessage,
+        msg: &pulsar_protocol::SwarmMessage,
         target_agent_id: &str,
     ) -> Result<(), BoxerError> {
         let mut signed = msg.clone();

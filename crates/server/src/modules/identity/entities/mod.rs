@@ -1,11 +1,11 @@
 //! Domain entities and DTOs for installation identity and the indefinite interaction ledger.
 
-use agents_protocol::{
-    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
-};
 use axum::http::{HeaderMap, HeaderName, HeaderValue};
 use garde::Validate;
 use ironic::{ExtractFuture, ExtractedValue, OpenApiSchema, ParameterExtractor, RequestContext};
+use pulsar_protocol::{
+    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 

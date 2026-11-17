@@ -1,11 +1,11 @@
 //! Data transfer objects for VLAN node registration and dynamic preview syncing.
 
-use agents_protocol::{IsolationKind, NodeStatus, RuntimeKind, TraefikPreviewRoute};
 use garde::Validate;
 use ironic::OpenApiSchema;
+use pulsar_protocol::{IsolationKind, NodeStatus, RuntimeKind, TraefikPreviewRoute};
 use serde::{Deserialize, Serialize};
 
-/// Heartbeat payload sent by `agents-boxer` daemons to auto-register on the cluster.
+/// Heartbeat payload sent by `pulsar-boxer` daemons to auto-register on the cluster.
 #[derive(Debug, Clone, Deserialize, Serialize, Validate, OpenApiSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeHeartbeatDto {

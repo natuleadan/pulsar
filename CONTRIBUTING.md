@@ -1,11 +1,11 @@
-# Contributing to Natuleadan Agents
+# Contributing to Natuleadan Pulsar
 
 > Read these conventions before contributing. This repository maintains strict commit
 > and CI validation standards identical to `natuleadan/skills`.
 
 ## Quick start
 
-1. Clone `https://github.com/natuleadan/agents.git`.
+1. Clone `https://github.com/natuleadan/pulsar.git`.
 2. Run `pnpm install` to install commitlint and Husky hooks.
 3. Run `cargo check --workspace` to verify the Rust workspace.
 4. Run `pnpm release:check` to confirm the version baseline is clean.

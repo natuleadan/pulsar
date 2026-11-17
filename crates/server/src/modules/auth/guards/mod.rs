@@ -2,11 +2,11 @@
 
 pub mod security;
 
-use agents_protocol::ApiKeyScope;
 use ironic::{
     ExtractFuture, ExtractedValue, Guard, GuardDecision, GuardFuture, HttpError,
     ParameterExtractor, RequestContext, RequestScope,
 };
+use pulsar_protocol::ApiKeyScope;
 pub use security::{AgentCircuitBreakerMiddleware, SecurityLifecycleHook};
 
 use crate::modules::auth::{entities::AuthenticatedActor, services::AuthService};

@@ -1,8 +1,8 @@
 //! Validated DTOs for session lifecycle, tri-state filtering, and local draft recovery.
 
-use agents_protocol::{InteractionMode, TriStateFilter};
 use garde::Validate;
 use ironic::OpenApiSchema;
+use pulsar_protocol::{InteractionMode, TriStateFilter};
 use serde::Deserialize;
 
 use crate::infra::error::ServerError;

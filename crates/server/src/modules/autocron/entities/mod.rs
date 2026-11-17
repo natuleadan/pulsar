@@ -1,7 +1,7 @@
 //! Domain entities for Autocron schedules, execution outcomes, and boot recovery reports.
 
-use agents_protocol::TriggerKind;
 use ironic::OpenApiSchema;
+use pulsar_protocol::TriggerKind;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

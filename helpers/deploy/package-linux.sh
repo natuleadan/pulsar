@@ -16,7 +16,7 @@ rm -rf "${STAGE_DIR}"
 mkdir -p "${STAGE_DIR}/bin"
 mkdir -p "${STAGE_DIR}/config"
 
-for bin in agents-server agents-boxer agents-installer; do
+for bin in pulsar-server pulsar-boxer pulsar-installer; do
   SRC="${ROOT_DIR}/target/release/${bin}"
   if [[ -f "${SRC}" ]]; then
     cp "${SRC}" "${STAGE_DIR}/bin/${bin}"
@@ -37,7 +37,7 @@ TARGET_DIR="${HOME}/.local/bin"
 mkdir -p "${TARGET_DIR}"
 SCRIPT_PATH="$(cd "$(dirname "$0")" && pwd)"
 cp -f "${SCRIPT_PATH}/bin/"* "${TARGET_DIR}/"
-chmod +x "${TARGET_DIR}"/agents-*
+chmod +x "${TARGET_DIR}"/pulsar-*
 echo "Installed sovereign binaries into ${TARGET_DIR} without sudo."
 EOF
 chmod +x "${STAGE_DIR}/install.sh"

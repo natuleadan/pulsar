@@ -26,7 +26,7 @@ cat >"${BUNDLE_DIR}/Contents/Info.plist" <<EOF
     <key>CFBundleDisplayName</key>
     <string>${APP_NAME}</string>
     <key>CFBundleIdentifier</key>
-    <string>dev.natuleadan.agents</string>
+    <string>dev.natuleadan.pulsar</string>
     <key>CFBundleVersion</key>
     <string>${VERSION}</string>
     <key>CFBundleShortVersionString</key>
@@ -36,7 +36,7 @@ cat >"${BUNDLE_DIR}/Contents/Info.plist" <<EOF
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleExecutable</key>
-    <string>agents-server</string>
+    <string>pulsar-server</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>NSHighResolutionCapable</key>
@@ -45,16 +45,16 @@ cat >"${BUNDLE_DIR}/Contents/Info.plist" <<EOF
 </plist>
 EOF
 
-BIN_SRC="${ROOT_DIR}/target/release/agents-server"
+BIN_SRC="${ROOT_DIR}/target/release/pulsar-server"
 if [[ -f "${BIN_SRC}" ]]; then
-  cp "${BIN_SRC}" "${BUNDLE_DIR}/Contents/MacOS/agents-server"
+  cp "${BIN_SRC}" "${BUNDLE_DIR}/Contents/MacOS/pulsar-server"
 else
-  cat >"${BUNDLE_DIR}/Contents/MacOS/agents-server" <<'EOF'
+  cat >"${BUNDLE_DIR}/Contents/MacOS/pulsar-server" <<'EOF'
 #!/bin/sh
 echo "Natuleadan sovereign agent engine runtime"
 EOF
 fi
-chmod +x "${BUNDLE_DIR}/Contents/MacOS/agents-server"
+chmod +x "${BUNDLE_DIR}/Contents/MacOS/pulsar-server"
 
 TAR_OUT="${DIST_DIR}/${APP_NAME}-macos-${ARCH}.tar.gz"
 tar -czf "${TAR_OUT}" -C "${DIST_DIR}" "${APP_NAME}.app"

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{CursorPage, FencingToken, StopReason, TaskState};
+use pulsar_protocol::{CursorPage, FencingToken, StopReason, TaskState};
 use tokio::sync::Mutex;
 
 use crate::{

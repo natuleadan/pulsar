@@ -1,7 +1,7 @@
 //! Session and draft recovery domain entities.
 
-use agents_protocol::InteractionMode;
 use ironic::OpenApiSchema;
+use pulsar_protocol::InteractionMode;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

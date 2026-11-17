@@ -3,7 +3,7 @@
 
 use std::{path::PathBuf, process::Stdio, sync::Arc, time::Duration};
 
-use agents_protocol::{IsolationKind, TaskStreamEvent};
+use pulsar_protocol::{IsolationKind, TaskStreamEvent};
 use tokio::{
     io::{AsyncBufReadExt, BufReader},
     process::Command,
@@ -69,7 +69,7 @@ impl DockerRuntimeDriver {
             .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
             .take(40)
             .collect();
-        let container_name = format!("agents-box-{sanitized_task_id}");
+        let container_name = format!("pulsar-box-{sanitized_task_id}");
 
         let mem_mb = req.exec.max_memory_mb.unwrap_or(512).max(64);
         let host_cpus = std::thread::available_parallelism()
@@ -97,20 +97,20 @@ impl DockerRuntimeDriver {
             "-w".to_owned(),
             "/workspace".to_owned(),
             "--label".to_owned(),
-            format!("agents.isolation={}", req.profile.isolation.as_str()),
+            format!("pulsar.isolation={}", req.profile.isolation.as_str()),
         ];
 
         if !req.exec.network_egress {
             args.push("--network=none".to_owned());
         } else {
-            args.push("--network=agents-vlan".to_owned());
+            args.push("--network=pulsar-vlan".to_owned());
         }
 
         if req.profile.isolation == IsolationKind::Openshell
             && let Some(gateway) = &req.profile.gateway_url
         {
             args.push("--label".to_owned());
-            args.push(format!("agents.openshell.gateway={gateway}"));
+            args.push(format!("pulsar.openshell.gateway={gateway}"));
         }
 
         let env_map = build_sanitized_env(&req.exec, req.proxy_url.as_deref());

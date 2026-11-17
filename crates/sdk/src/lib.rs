@@ -1,8 +1,8 @@
-//! Public programmatic SDK for interacting with `agents-server` and `agents-boxer`.
+//! Public programmatic SDK for interacting with `pulsar-server` and `pulsar-boxer`.
 
 #![forbid(unsafe_code)]
 
-use agents_protocol::{SkillInstallInput, SkillManifest};
+use pulsar_protocol::{SkillInstallInput, SkillManifest};
 use reqwest::header::{AUTHORIZATION, HeaderMap, HeaderValue};
 use thiserror::Error;
 
@@ -17,7 +17,7 @@ pub enum SdkError {
     Config(String),
 }
 
-/// Client configuration for connecting to an Agents Sovereign Node.
+/// Client configuration for connecting to an Pulsar Sovereign Node.
 #[derive(Debug, Clone)]
 pub struct SdkConfig {
     pub base_url: String,
@@ -40,14 +40,14 @@ impl SdkConfig {
     }
 }
 
-/// Programmatic SDK client for the Agents orchestrator platform.
+/// Programmatic SDK client for the Pulsar orchestrator platform.
 #[derive(Clone)]
-pub struct AgentsSdk {
+pub struct PulsarSdk {
     config: SdkConfig,
     client: reqwest::Client,
 }
 
-impl AgentsSdk {
+impl PulsarSdk {
     /// Creates a new SDK instance from a [`SdkConfig`].
     ///
     /// # Errors
@@ -151,7 +151,7 @@ mod tests {
     #[test]
     fn test_sdk_instantiation_with_bearer_token() {
         let cfg = SdkConfig::new("https://test.nla.run").with_token("test-key-123");
-        let sdk = AgentsSdk::new(cfg);
+        let sdk = PulsarSdk::new(cfg);
         assert!(sdk.is_ok());
     }
 }

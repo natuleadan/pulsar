@@ -9,8 +9,10 @@
 
 mod common;
 
-use agents_protocol::{ApiKeyScope, IsolationKind, RuntimeKind};
-use agents_server::{
+use axum::http::{Method, StatusCode};
+use common::{build_test_harness, register_and_login, send_json};
+use pulsar_protocol::{ApiKeyScope, IsolationKind, RuntimeKind};
+use pulsar_server::{
     ServerConfig,
     infra::{
         events::{AppEventBus, SecurityAlertEvent},
@@ -25,8 +27,6 @@ use agents_server::{
         nodes::dto::NodeRegistrationDto,
     },
 };
-use axum::http::{Method, StatusCode};
-use common::{build_test_harness, register_and_login, send_json};
 use tower::ServiceExt;
 
 #[tokio::test]
@@ -368,7 +368,7 @@ async fn anti_regression_safe_version_endpoint_scrubs_internal_compiler_metadata
     let (status_anon, body_anon) =
         send_json(&harness.router, Method::GET, "/version", None, None).await;
     assert_eq!(status_anon, StatusCode::OK);
-    assert_eq!(body_anon["service"], "agents-server");
+    assert_eq!(body_anon["service"], "pulsar-server");
     assert_eq!(body_anon["status"], "ok");
     assert!(body_anon.get("version").is_some());
     assert!(body_anon.get("rust_version").is_none());
@@ -386,7 +386,7 @@ async fn anti_regression_safe_version_endpoint_scrubs_internal_compiler_metadata
     )
     .await;
     assert_eq!(status_admin, StatusCode::OK);
-    assert_eq!(body_admin["service"], "agents-server");
+    assert_eq!(body_admin["service"], "pulsar-server");
     assert_eq!(body_admin["status"], "ok");
     assert!(body_admin["diagnostics"].is_object());
     assert_eq!(body_admin["diagnostics"]["protocol_version"], "1.0");

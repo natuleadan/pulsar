@@ -1,4 +1,4 @@
-use agents_protocol::{SetupMode, WorkerStatus};
+use pulsar_protocol::{SetupMode, WorkerStatus};
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::style::{Modifier, Style};
@@ -17,7 +17,7 @@ pub fn render_header(frame: &mut Frame<'_>, area: Rect, state: &AppState, theme:
     };
     let line = Line::from(vec![
         Span::styled(
-            " agents ",
+            " pulsar ",
             Style::default()
                 .bg(theme.primary)
                 .fg(theme.primary_fg)

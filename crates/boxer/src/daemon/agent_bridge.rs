@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
-use agents_protocol::{
+use pulsar_protocol::{
     BoxerNodeAnnouncement, CodecId, EventEnvelope, ExecOptions, FollowUpMessage, NodeStatus,
     PermissionMask, PreviewRouteSync, SandboxProfile, SteeringMessage, StreamPayload, TaskRequest,
     TaskStreamEvent, WorkerStatus,
@@ -59,7 +59,7 @@ pub fn build_proxy_credentials(config: &BoxerConfig) -> Vec<CredentialRule> {
     rules
 }
 
-/// Merges node-level proxy credentials with scoped task-level credentials from `agents-server`.
+/// Merges node-level proxy credentials with scoped task-level credentials from `pulsar-server`.
 #[must_use]
 pub fn build_proxy_credentials_for_task(
     config: &BoxerConfig,
@@ -142,7 +142,7 @@ fn detect_llm_endpoint() -> Option<ProviderEndpointConfig> {
             kind: ProviderKind::OpenAi,
             base_url: std::env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "https://api.openai.com/v1".to_owned()),
-            model: std::env::var("AGENTS_LLM_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_owned()),
+            model: std::env::var("PULSAR_LLM_MODEL").unwrap_or_else(|_| "gpt-4o-mini".to_owned()),
             fallback_endpoint_id: None,
             api_key_env: Some("OPENAI_API_KEY".to_owned()),
             default_headers: HashMap::new(),
@@ -156,23 +156,23 @@ fn detect_llm_endpoint() -> Option<ProviderEndpointConfig> {
             kind: ProviderKind::Anthropic,
             base_url: std::env::var("ANTHROPIC_BASE_URL")
                 .unwrap_or_else(|_| "https://api.anthropic.com".to_owned()),
-            model: std::env::var("AGENTS_LLM_MODEL")
+            model: std::env::var("PULSAR_LLM_MODEL")
                 .unwrap_or_else(|_| "claude-3-5-sonnet-latest".to_owned()),
             fallback_endpoint_id: None,
             api_key_env: Some("ANTHROPIC_API_KEY".to_owned()),
             default_headers: HashMap::new(),
         });
     }
-    if let Ok(base_url) = std::env::var("AGENTS_LLM_ENDPOINT")
+    if let Ok(base_url) = std::env::var("PULSAR_LLM_ENDPOINT")
         && !base_url.trim().is_empty()
     {
         return Some(ProviderEndpointConfig {
             id: "default".to_owned(),
             kind: ProviderKind::OpenAi,
             base_url,
-            model: std::env::var("AGENTS_LLM_MODEL").unwrap_or_else(|_| "llama3.2".to_owned()),
+            model: std::env::var("PULSAR_LLM_MODEL").unwrap_or_else(|_| "llama3.2".to_owned()),
             fallback_endpoint_id: None,
-            api_key_env: std::env::var("AGENTS_LLM_API_KEY_ENV").ok(),
+            api_key_env: std::env::var("PULSAR_LLM_API_KEY_ENV").ok(),
             default_headers: HashMap::new(),
         });
     }
@@ -336,7 +336,7 @@ pub async fn try_run_agent_engine(
                 .publish_stream_event(&EventEnvelope {
                     seq: 0,
                     emitted_at_ms: now_ms(),
-                    codec: agents_protocol::CodecId::EventsV1,
+                    codec: pulsar_protocol::CodecId::EventsV1,
                     session_id: req.session_id.clone(),
                     task_id: Some(req.task_id.clone()),
                     payload: StreamPayload::TaskChunk {
@@ -412,10 +412,10 @@ impl BoxerDaemon {
     pub fn build_verified_swarm_message(
         &self,
         session_id: &str,
-        to: agents_protocol::SwarmTopic,
+        to: pulsar_protocol::SwarmTopic,
         payload: Value,
         permission_mask: PermissionMask,
-    ) -> Result<agents_protocol::SwarmMessage, BoxerError> {
+    ) -> Result<pulsar_protocol::SwarmMessage, BoxerError> {
         let msg = build_signed_swarm_message(
             self.config.cluster_secret.as_bytes(),
             session_id,
@@ -433,7 +433,7 @@ pub async fn upload_packaged_artifacts(
     config: &BoxerConfig,
     task_id: &str,
     working_dir: &std::path::Path,
-    manifest: &agents_protocol::ArtifactManifest,
+    manifest: &pulsar_protocol::ArtifactManifest,
 ) -> usize {
     use base64::Engine;
 

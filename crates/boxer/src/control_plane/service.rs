@@ -9,7 +9,7 @@ use std::{
     },
 };
 
-use agents_protocol::{ExecOptions, SandboxProfile};
+use pulsar_protocol::{ExecOptions, SandboxProfile};
 use tokio::sync::{RwLock, watch};
 
 use crate::{
@@ -58,7 +58,7 @@ impl BoxerControlPlaneService {
     /// Constructs a new [`BoxerControlPlaneService`].
     #[must_use]
     pub fn new(config: Arc<BoxerConfig>) -> Self {
-        let proxy_url = std::env::var("AGENTS_PROXY_URL")
+        let proxy_url = std::env::var("PULSAR_PROXY_URL")
             .ok()
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty());

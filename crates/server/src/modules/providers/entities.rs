@@ -1,5 +1,5 @@
-use agents_protocol::{ClassifiedProviderError, DiscoveredModel, ProviderProtocol};
 use ironic::prelude::OpenApiSchema;
+use pulsar_protocol::{ClassifiedProviderError, DiscoveredModel, ProviderProtocol};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, OpenApiSchema)]

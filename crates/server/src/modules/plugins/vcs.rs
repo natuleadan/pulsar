@@ -105,7 +105,7 @@ impl VcsProxy {
             .http
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.server_token))
-            .header("User-Agent", "sovereign-agents-server")
+            .header("User-Agent", "sovereign-pulsar-server")
             .header("Accept", "application/vnd.github+json")
             .send()
             .await
@@ -174,7 +174,7 @@ impl VcsProxy {
             .http
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.server_token))
-            .header("User-Agent", "sovereign-agents-server")
+            .header("User-Agent", "sovereign-pulsar-server")
             .header("Accept", "application/vnd.github.v3.diff")
             .send()
             .await
@@ -226,7 +226,7 @@ impl VcsProxy {
             .http
             .get(&url)
             .header("Authorization", format!("Bearer {}", self.server_token))
-            .header("User-Agent", "sovereign-agents-server")
+            .header("User-Agent", "sovereign-pulsar-server")
             .header("Accept", "application/vnd.github+json")
             .send()
             .await

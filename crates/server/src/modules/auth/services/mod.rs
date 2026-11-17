@@ -4,8 +4,8 @@ pub mod crypto;
 
 use std::{sync::Arc, time::Duration};
 
-use agents_protocol::{ApiKeyMetadata, ApiKeyScope, TokenPair, UserClaims};
 use ironic::prelude::*;
+use pulsar_protocol::{ApiKeyMetadata, ApiKeyScope, TokenPair, UserClaims};
 use serde_json::json;
 
 use crate::{
@@ -39,7 +39,7 @@ pub struct AuthService {
 }
 
 impl AuthService {
-    /// Seeds an initial admin user if `AGENTS_ADMIN_EMAIL` and `AGENTS_ADMIN_INITIAL_PASSWORD` are set.
+    /// Seeds an initial admin user if `PULSAR_ADMIN_EMAIL` and `PULSAR_ADMIN_INITIAL_PASSWORD` are set.
     ///
     /// # Errors
     ///

@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
-use agents_protocol::EventEnvelope;
+use pulsar_protocol::EventEnvelope;
 
 use crate::core::ClientError;
 use crate::core::adapters::ServerModeProvider;

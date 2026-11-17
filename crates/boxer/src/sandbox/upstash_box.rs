@@ -2,7 +2,7 @@
 
 use std::{path::PathBuf, time::Duration};
 
-use agents_protocol::{SandboxProfileError, TaskStreamEvent};
+use pulsar_protocol::{SandboxProfileError, TaskStreamEvent};
 use tokio::sync::{mpsc, watch};
 
 use crate::{

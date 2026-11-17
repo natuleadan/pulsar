@@ -3,7 +3,7 @@ use std::fmt;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-use agents_protocol::{EventEnvelope, StreamPayload};
+use pulsar_protocol::{EventEnvelope, StreamPayload};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

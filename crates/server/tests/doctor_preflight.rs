@@ -2,12 +2,12 @@
 
 #![forbid(unsafe_code)]
 
-use agents_server::{CheckStatus, DoctorReport, EnvironmentMode, InfrastructureMode, ServerConfig};
+use pulsar_server::{CheckStatus, DoctorReport, EnvironmentMode, InfrastructureMode, ServerConfig};
 
 #[tokio::test]
 async fn doctor_evaluates_topologia_a_self_hosted_dev_cleanly() {
     let config = ServerConfig::from_lookup(|k| match k {
-        "AGENTS_ENV" => Some("development".to_owned()),
+        "PULSAR_ENV" => Some("development".to_owned()),
         "INFRASTRUCTURE_MODE" => Some("self-hosted".to_owned()),
         _ => None,
     })
@@ -32,9 +32,9 @@ async fn doctor_evaluates_topologia_a_self_hosted_dev_cleanly() {
 #[tokio::test]
 async fn doctor_evaluates_topologia_b_cloud_native_preflight() {
     let config = ServerConfig::from_lookup(|k| match k {
-        "AGENTS_ENV" => Some("test".to_owned()),
+        "PULSAR_ENV" => Some("test".to_owned()),
         "INFRASTRUCTURE_MODE" => Some("managed-cloud".to_owned()),
-        "DATABASE_URL" => Some("postgres://user:pass@ep-test.neon.tech/agents".to_owned()),
+        "DATABASE_URL" => Some("postgres://user:pass@ep-test.neon.tech/pulsar".to_owned()),
         "REDIS_URL" => Some("rediss://default:token@skunk.upstash.io:6379".to_owned()),
         "QSTASH_URL" => Some("https://qstash.upstash.io".to_owned()),
         "QSTASH_TOKEN" => Some("ey-test-token".to_owned()),

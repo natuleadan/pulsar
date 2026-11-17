@@ -1,7 +1,7 @@
 //! Domain entities for node-based DAG workflows and crash-resumable workflow runs.
 
-use agents_protocol::{WorkflowDag, WorkflowEdge, WorkflowNode};
 use ironic::OpenApiSchema;
+use pulsar_protocol::{WorkflowDag, WorkflowEdge, WorkflowNode};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

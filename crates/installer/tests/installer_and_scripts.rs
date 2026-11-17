@@ -3,17 +3,17 @@
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 
-use agents_installer::cli::{Cli, Commands, execute_cli};
-use agents_installer::config::{ClusterMode, TopologySpec};
-use agents_installer::doctor::{DoctorReport, redact_secrets};
-use agents_installer::envgen::{
+use clap::Parser;
+use pulsar_installer::cli::{Cli, Commands, execute_cli};
+use pulsar_installer::config::{ClusterMode, TopologySpec};
+use pulsar_installer::doctor::{DoctorReport, redact_secrets};
+use pulsar_installer::envgen::{
     GeneratedSecrets, render_env_file, render_redacted_preview, write_env_file_secure,
 };
-use agents_installer::error::InstallerError;
-use agents_installer::planner::ExecutionPlan;
-use agents_installer::runner::{RecordingExecutor, SystemExecutor, run_plan};
-use agents_protocol::{IsolationKind, RuntimeKind};
-use clap::Parser;
+use pulsar_installer::error::InstallerError;
+use pulsar_installer::planner::ExecutionPlan;
+use pulsar_installer::runner::{RecordingExecutor, SystemExecutor, run_plan};
+use pulsar_protocol::{IsolationKind, RuntimeKind};
 
 fn repo_scripts_dir() -> PathBuf {
     let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -33,7 +33,7 @@ fn repo_scripts_dir() -> PathBuf {
 fn sample_monolithic_spec() -> TopologySpec {
     TopologySpec {
         mode: ClusterMode::Monolithic,
-        public_domain: Some("agents.example.com".to_owned()),
+        public_domain: Some("pulsar.example.com".to_owned()),
         preview_domain: "preview.example.com".to_owned(),
         acme_email: Some("ops@example.com".to_owned()),
         vlan_cidr: "10.0.0.0/8".to_owned(),
@@ -45,7 +45,7 @@ fn sample_monolithic_spec() -> TopologySpec {
         ssh_target: None,
         ssh_key_path: None,
         scripts_dir: repo_scripts_dir(),
-        env_file_path: PathBuf::from("/tmp/agents-test.env"),
+        env_file_path: PathBuf::from("/tmp/pulsar-test.env"),
         dry_run: true,
     }
 }
@@ -53,7 +53,7 @@ fn sample_monolithic_spec() -> TopologySpec {
 #[test]
 fn cli_parsing_supports_all_subcommands_and_modes() {
     let install = Cli::try_parse_from([
-        "agents-installer",
+        "pulsar-installer",
         "install",
         "--mode",
         "server",
@@ -72,7 +72,7 @@ fn cli_parsing_supports_all_subcommands_and_modes() {
     ));
 
     let join = Cli::try_parse_from([
-        "agents-installer",
+        "pulsar-installer",
         "join-vlan",
         "--vlan-ip",
         "10.10.0.9",
@@ -83,10 +83,10 @@ fn cli_parsing_supports_all_subcommands_and_modes() {
     .unwrap();
     assert!(matches!(join.command, Commands::JoinVlan { .. }));
 
-    let doc = Cli::try_parse_from(["agents-installer", "doctor", "--mode", "boxer"]).unwrap();
+    let doc = Cli::try_parse_from(["pulsar-installer", "doctor", "--mode", "boxer"]).unwrap();
     assert!(matches!(doc.command, Commands::Doctor { .. }));
 
-    let upg = Cli::try_parse_from(["agents-installer", "upgrade", "--dry-run"]).unwrap();
+    let upg = Cli::try_parse_from(["pulsar-installer", "upgrade", "--dry-run"]).unwrap();
     assert!(matches!(
         upg.command,
         Commands::Upgrade { dry_run: true, .. }
@@ -208,20 +208,20 @@ async fn secrets_generation_redaction_permissions_and_dry_run_never_leak() {
     assert!(!dbg.contains(&secrets.postgres_password));
 
     let preview = render_redacted_preview(&spec, &secrets);
-    assert!(preview.contains("AGENTS_JWT_SECRET=[REDACTED]"));
+    assert!(preview.contains("PULSAR_JWT_SECRET=[REDACTED]"));
     assert!(!preview.contains(&secrets.jwt_secret));
 
     let redacted_log = redact_secrets(&format!(
-        "running DATABASE_URL=postgres://agents:{}@127.0.0.1:5432/agents AGENTS_JWT_SECRET={}",
+        "running DATABASE_URL=postgres://pulsar:{}@127.0.0.1:5432/pulsar PULSAR_JWT_SECRET={}",
         secrets.postgres_password, secrets.jwt_secret
     ));
     assert!(!redacted_log.contains(&secrets.postgres_password));
     assert!(!redacted_log.contains(&secrets.jwt_secret));
 
     // Write secure 0600 file and test DryRun CLI command.
-    let dir = std::env::temp_dir().join(format!("agents_env_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("pulsar_env_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let env_path = dir.join("agents.env");
+    let env_path = dir.join("pulsar.env");
     let raw = render_env_file(&spec, &secrets);
     write_env_file_secure(&env_path, &raw).unwrap();
     #[cfg(unix)]
@@ -232,12 +232,12 @@ async fn secrets_generation_redaction_permissions_and_dry_run_never_leak() {
     }
 
     let cli = Cli::try_parse_from([
-        "agents-installer",
+        "pulsar-installer",
         "dry-run",
         "--mode",
         "monolithic",
         "--public-domain",
-        "agents.example.com",
+        "pulsar.example.com",
         "--acme-email",
         "ops@example.com",
         "--scripts-dir",
@@ -246,19 +246,19 @@ async fn secrets_generation_redaction_permissions_and_dry_run_never_leak() {
     .unwrap();
     let output = execute_cli(cli).await.unwrap();
     assert!(output.contains("00-preflight.sh"));
-    assert!(output.contains("AGENTS_JWT_SECRET=[REDACTED]"));
+    assert!(output.contains("PULSAR_JWT_SECRET=[REDACTED]"));
 
     let _ = std::fs::remove_dir_all(dir);
 }
 
 #[tokio::test]
 async fn real_preflight_dry_run_scripts_and_doctor_smoke_execute_cleanly() {
-    let dir = std::env::temp_dir().join(format!("agents_scripts_smoke_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("pulsar_scripts_smoke_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
 
     // Prepare secure 0600 env file for 90-doctor.sh.
     let mut spec = sample_monolithic_spec();
-    let env_path = dir.join("agents.env");
+    let env_path = dir.join("pulsar.env");
     spec.env_file_path = env_path.clone();
     let secrets = GeneratedSecrets::generate();
     write_env_file_secure(&env_path, &render_env_file(&spec, &secrets)).unwrap();
@@ -277,8 +277,8 @@ async fn real_preflight_dry_run_scripts_and_doctor_smoke_execute_cleanly() {
             .arg(&adjusted.script_path)
             .args(&adjusted.args)
             .env("OS_RELEASE_FILE", &os_release_path)
-            .env("AGENTS_MIN_DISK_MB", "1")
-            .env("AGENTS_MIN_RAM_MB", "64")
+            .env("PULSAR_MIN_DISK_MB", "1")
+            .env("PULSAR_MIN_RAM_MB", "64")
             .output()
             .await
             .unwrap();

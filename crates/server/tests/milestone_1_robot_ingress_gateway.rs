@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{DeviceHandshake, RobotCommandFrame, RobotTelemetryFrame};
-use agents_server::{infra::stream::BusClient, modules::robots::services::RobotGatewayService};
+use pulsar_protocol::{DeviceHandshake, RobotCommandFrame, RobotTelemetryFrame};
+use pulsar_server::{infra::stream::BusClient, modules::robots::services::RobotGatewayService};
 
 #[tokio::test]
 async fn test_robot_handshake_registration_and_token_issuance() {

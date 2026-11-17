@@ -2,7 +2,8 @@
 
 mod common;
 
-use agents_server::{
+use axum::http::{Method, StatusCode};
+use pulsar_server::{
     ServerConfig,
     modules::audit::services::AuditService,
     modules::auth::{
@@ -10,7 +11,6 @@ use agents_server::{
         services::{AuthService, sha256_hex},
     },
 };
-use axum::http::{Method, StatusCode};
 use serde_json::json;
 
 use common::{build_test_harness, build_test_harness_with_config, register_and_login, send_json};

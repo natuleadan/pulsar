@@ -1,4 +1,4 @@
--- Initial PostgreSQL schema for agents-server.
+-- Initial PostgreSQL schema for pulsar-server.
 -- Stores identity, revocable SHA-256 credentials, sessions, durable fenced tasks,
 -- ordered event stream envelopes, and tamper-evident hash-chained audit logs.
 

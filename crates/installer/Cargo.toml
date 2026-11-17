@@ -1,13 +1,13 @@
 [package]
-name = "agents-installer"
+name = "pulsar-installer"
 version.workspace = true
 edition.workspace = true
-description = "VPS provisioning and environment self-configuration CLI for the agents platform"
+description = "VPS provisioning and environment self-configuration CLI for the Pulsar platform"
 license.workspace = true
 publish = false
 
 [dependencies]
-agents-protocol = { path = "../protocol" }
+pulsar-protocol = { path = "../protocol" }
 clap = { version = "4.6", features = ["derive"] }
 hex = "0.4"
 serde = { version = "1.0", features = ["derive"] }

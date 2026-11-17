@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
-use agents_client::core::adapters::{MockTransport, ServerModeProvider, ThirdPartyAdapter};
-use agents_client::core::backend::{ControlAction, HttpResponse, SandboxProvider};
-use agents_protocol::{InteractionMode, ThirdPartyProvider};
+use pulsar_client::core::adapters::{MockTransport, ServerModeProvider, ThirdPartyAdapter};
+use pulsar_client::core::backend::{ControlAction, HttpResponse, SandboxProvider};
+use pulsar_protocol::{InteractionMode, ThirdPartyProvider};
 use serde_json::json;
 
 #[tokio::test]
@@ -47,21 +47,21 @@ async fn server_api_covers_nodes_tasks_workflows_autocron_keys_and_a2a() {
     });
     transport.push_response(HttpResponse {
         status: 200,
-        body: json!({ "name": "agents-server" }).to_string(),
+        body: json!({ "name": "pulsar-server" }).to_string(),
     });
     transport.push_response(HttpResponse {
         status: 200,
         body: json!({ "ok": true }).to_string(),
     });
 
-    let provider = ServerModeProvider::new("https://agents.example/", transport.clone());
+    let provider = ServerModeProvider::new("https://pulsar.example/", transport.clone());
     assert_eq!(
         provider.session_ws_url("s-1"),
-        "wss://agents.example/api/v1/sessions/s-1/ws"
+        "wss://pulsar.example/api/v1/sessions/s-1/ws"
     );
     assert_eq!(
         provider.session_sse_url("s-1"),
-        "https://agents.example/api/v1/sessions/s-1/events/stream"
+        "https://pulsar.example/api/v1/sessions/s-1/events/stream"
     );
 
     let nodes = provider.list_nodes("tok").await.expect("list nodes");
@@ -81,7 +81,7 @@ async fn server_api_covers_nodes_tasks_workflows_autocron_keys_and_a2a() {
     assert_eq!(keys[0].name, "ci");
 
     let card = provider.get_agent_card().await.expect("agent card");
-    assert_eq!(card["name"], "agents-server");
+    assert_eq!(card["name"], "pulsar-server");
 
     let receipt = provider
         .send_control("tok", "task-7", ControlAction::Pause, "idem-pause")
@@ -99,13 +99,13 @@ async fn server_api_covers_nodes_tasks_workflows_autocron_keys_and_a2a() {
 
 #[test]
 fn sse_frame_parser_extracts_event_envelopes() {
-    let sample = agents_protocol::EventEnvelope {
+    let sample = pulsar_protocol::EventEnvelope {
         seq: 1,
         emitted_at_ms: 100,
-        codec: agents_protocol::CodecId::EventsV1,
+        codec: pulsar_protocol::CodecId::EventsV1,
         session_id: "s1".to_owned(),
         task_id: Some("t1".to_owned()),
-        payload: agents_protocol::StreamPayload::TaskChunk {
+        payload: pulsar_protocol::StreamPayload::TaskChunk {
             chunk: "hi".to_owned(),
             is_stderr: false,
         },

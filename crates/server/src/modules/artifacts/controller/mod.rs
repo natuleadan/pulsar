@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use agents_protocol::ApiKeyScope;
 use ironic::{HeaderName, HeaderValue, HttpStatus, MultipartForm, MultipartFormData, prelude::*};
+use pulsar_protocol::ApiKeyScope;
 use serde::Deserialize;
 
 use crate::{

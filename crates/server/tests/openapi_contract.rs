@@ -13,7 +13,7 @@ use common::build_test_harness;
 
 #[tokio::test]
 async fn openapi_spec_is_enriched_and_scalar_ui_renders_completely() {
-    let harness = build_test_harness(agents_server::ServerConfig::for_tests()).await;
+    let harness = build_test_harness(pulsar_server::ServerConfig::for_tests()).await;
 
     // 1. Validate /openapi.json contract
     let req = Request::builder()
@@ -32,7 +32,7 @@ async fn openapi_spec_is_enriched_and_scalar_ui_renders_completely() {
         spec.get("info")
             .and_then(|i| i.get("title"))
             .and_then(Value::as_str),
-        Some("agents-server API")
+        Some("pulsar-server API")
     );
 
     let paths = spec

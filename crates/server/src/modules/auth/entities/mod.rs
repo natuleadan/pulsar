@@ -1,7 +1,7 @@
 //! Authentication domain entities and authenticated actor extension.
 
-use agents_protocol::ApiKeyScope;
 use ironic::OpenApiSchema;
+use pulsar_protocol::ApiKeyScope;
 use serde::{Deserialize, Serialize};
 
 /// Persisted user account authenticated via Argon2id password hash.

@@ -1,4 +1,4 @@
-/// Generates `/assets/app.js` driving browser interactions against `agents-server`.
+/// Generates `/assets/app.js` driving browser interactions against `pulsar-server`.
 #[must_use]
 pub fn app_js() -> &'static str {
     r#"(function () {
@@ -83,7 +83,7 @@ pub fn app_js() -> &'static str {
     }
   }
 
-  const THEME_KEY = "agents_theme";
+  const THEME_KEY = "pulsar_theme";
   function resolveTheme(pref) {
     if (pref === "light") return "light";
     if (pref === "dark") return "dark";

@@ -57,8 +57,8 @@ impl UserSpaceInstallPaths {
 
         Self {
             bin_dir: home.join(".local").join("bin"),
-            config_dir: home.join(".config").join("agents"),
-            data_dir: home.join(".local").join("share").join("agents"),
+            config_dir: home.join(".config").join("pulsar"),
+            data_dir: home.join(".local").join("share").join("pulsar"),
         }
     }
 }
@@ -149,8 +149,8 @@ mod tests {
         let paths = UserSpaceInstallPaths::resolve_from_home(Some(fake_home));
 
         assert_eq!(paths.bin_dir, fake_home.join(".local/bin"));
-        assert_eq!(paths.config_dir, fake_home.join(".config/agents"));
-        assert_eq!(paths.data_dir, fake_home.join(".local/share/agents"));
+        assert_eq!(paths.config_dir, fake_home.join(".config/pulsar"));
+        assert_eq!(paths.data_dir, fake_home.join(".local/share/pulsar"));
 
         // Must NEVER point to system folders requiring sudo
         assert!(!paths.bin_dir.starts_with("/usr/local/bin"));

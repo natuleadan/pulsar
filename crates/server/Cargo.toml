@@ -1,5 +1,5 @@
 [package]
-name = "agents-server"
+name = "pulsar-server"
 version.workspace = true
 edition.workspace = true
 description = "Orchestrator server exposing the API, coordinating workflows, database, Valkey, NATS and autocron"
@@ -7,12 +7,12 @@ license.workspace = true
 publish = false
 
 [[bin]]
-name = "agents-server"
+name = "pulsar-server"
 path = "src/main.rs"
 
 [[bin]]
-name = "agents-migrate"
-path = "src/bin/agents_migrate.rs"
+name = "pulsar-migrate"
+path = "src/bin/pulsar_migrate.rs"
 
 [[bench]]
 name = "ironic_pipeline"
@@ -20,8 +20,8 @@ path = "benches/ironic_pipeline.rs"
 harness = false
 
 [dependencies]
-agents-protocol = { path = "../protocol", features = ["openapi"] }
-agents-styles = { path = "../styles" }
+pulsar-protocol = { path = "../protocol", features = ["openapi"] }
+pulsar-styles = { path = "../styles" }
 a2a = { package = "a2a-lf", version = "0.4.2" }
 argon2 = "0.5"
 async-nats = "0.42"

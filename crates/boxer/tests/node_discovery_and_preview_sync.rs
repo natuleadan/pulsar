@@ -1,11 +1,11 @@
 use std::{path::PathBuf, sync::Arc};
 
-use agents_boxer::{
+use pulsar_boxer::{
     config::BoxerConfig,
     daemon::{BoxerDaemon, InMemoryBoxerBus},
     leases::InMemoryLeaseClient,
 };
-use agents_protocol::{
+use pulsar_protocol::{
     IsolationKind, NodeStatus, PreviewRouteSync, RuntimeKind, SandboxProfile, SetupMode,
     TraefikPreviewRoute,
 };
@@ -22,8 +22,8 @@ fn test_config() -> Result<BoxerConfig, Box<dyn std::error::Error>> {
             allow_host_native: false,
             gateway_url: Some("http://10.0.0.10:9443".to_owned()),
         },
-        sandbox_image: "ghcr.io/natuleadan/agents-sandbox:latest".to_owned(),
-        workspace_root: PathBuf::from("/tmp/agents-boxes-test"),
+        sandbox_image: "ghcr.io/natuleadan/pulsar-sandbox:latest".to_owned(),
+        workspace_root: PathBuf::from("/tmp/pulsar-boxes-test"),
         max_concurrent_boxes: 6,
         nats_url: "nats://10.0.0.10:4222".to_owned(),
         nats_tls_enabled: false,
@@ -40,7 +40,7 @@ fn test_config() -> Result<BoxerConfig, Box<dyn std::error::Error>> {
         traefik_preview_enabled: true,
         traefik_preview_domain: "preview.example.com".to_owned(),
         traefik_dynamic_dir: std::env::temp_dir()
-            .join(format!("agents-traefik-node-test-{}", uuid::Uuid::new_v4())),
+            .join(format!("pulsar-traefik-node-test-{}", uuid::Uuid::new_v4())),
         traefik_default_ttl_secs: 600,
         strict_native_isolation: true,
         upstash_box_token: None,

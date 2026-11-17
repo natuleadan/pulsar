@@ -4,7 +4,12 @@
 
 use std::{sync::Arc, time::Duration};
 
-use agents_boxer::{
+use clap::Parser;
+use ironic::logging::{FileLogStorage, TimeSeriesConfig};
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithExportConfig as _;
+use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
+use pulsar_boxer::{
     config::{BoxerCli, BoxerConfig},
     control_plane::{
         BoxerControlPlaneService, build_control_plane_router, start_autodiscovery_heartbeat,
@@ -12,11 +17,6 @@ use agents_boxer::{
     daemon::{BoxerDaemon, NatsBoxerBus},
     leases::HttpServerLeaseClient,
 };
-use clap::Parser;
-use ironic::logging::{FileLogStorage, TimeSeriesConfig};
-use opentelemetry::trace::TracerProvider as _;
-use opentelemetry_otlp::WithExportConfig as _;
-use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
 use tracing::info;
 use tracing_subscriber::{EnvFilter, Layer, layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -33,7 +33,7 @@ fn build_boxer_otlp(endpoint: &str) -> Option<SdkTracerProvider> {
         .ok()
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "agents-boxer".to_owned());
+        .unwrap_or_else(|| "pulsar-boxer".to_owned());
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_tonic()
         .with_endpoint(endpoint)
@@ -54,13 +54,13 @@ fn build_boxer_otlp(endpoint: &str) -> Option<SdkTracerProvider> {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = dotenvy::dotenv();
-    let boxer_log_dir = std::env::var("AGENTS_BOXER_LOG_DIR")
+    let boxer_log_dir = std::env::var("PULSAR_BOXER_LOG_DIR")
         .map(std::path::PathBuf::from)
         .unwrap_or_else(|_| {
-            if let Ok(base) = std::env::var("AGENTS_LOG_DIR") {
+            if let Ok(base) = std::env::var("PULSAR_LOG_DIR") {
                 std::path::PathBuf::from(base).join("boxer")
-            } else if std::path::Path::new("/var/log/agents").is_dir() {
-                std::path::PathBuf::from("/var/log/agents/boxer")
+            } else if std::path::Path::new("/var/log/pulsar").is_dir() {
+                std::path::PathBuf::from("/var/log/pulsar/boxer")
             } else {
                 std::path::PathBuf::from(".logs/boxer")
             }
@@ -76,14 +76,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         EnvFilter::new("info,hyper=warn,hyper_util=warn,reqwest=warn,h2=warn,async_nats=warn")
     });
     let otel_endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
-        .or_else(|_| std::env::var("AGENTS_OTEL_ENDPOINT"))
+        .or_else(|_| std::env::var("PULSAR_OTEL_ENDPOINT"))
         .or_else(|_| std::env::var("OTLP_ENDPOINT"))
         .ok()
         .map(|s| s.trim().to_owned())
         .filter(|s| !s.is_empty());
     let otlp_provider = otel_endpoint.as_deref().and_then(build_boxer_otlp);
     let otel_layer = otlp_provider.as_ref().map(|provider| {
-        let tracer = provider.tracer("agents-boxer");
+        let tracer = provider.tracer("pulsar-boxer");
         tracing_opentelemetry::layer().with_tracer(tracer)
     });
 
@@ -97,7 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(otel) = otel_endpoint
         && _otel_guard.is_some()
     {
-        info!(otlp_endpoint = %otel, "agents-boxer OTLP exporter active alongside JSONL TimeSeriesLayer");
+        info!(otlp_endpoint = %otel, "pulsar-boxer OTLP exporter active alongside JSONL TimeSeriesLayer");
     }
 
     let cli = BoxerCli::parse();

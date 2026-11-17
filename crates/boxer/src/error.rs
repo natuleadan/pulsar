@@ -1,9 +1,9 @@
 //! Typed errors emitted across Boxer configuration, leasing, confinement, and previews.
 
-use agents_protocol::{ArtifactValidationError, PermissionError, SandboxProfileError};
+use pulsar_protocol::{ArtifactValidationError, PermissionError, SandboxProfileError};
 use thiserror::Error;
 
-/// Canonical error enum for the `agents-boxer` sandbox supervisor.
+/// Canonical error enum for the `pulsar-boxer` sandbox supervisor.
 #[derive(Debug, Error)]
 pub enum BoxerError {
     #[error("configuration error: {0}")]

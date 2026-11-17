@@ -3,9 +3,9 @@
 use std::sync::Arc;
 
 use a2a::{AgentCard, JsonRpcRequest, JsonRpcResponse};
-use agents_protocol::ApiKeyScope;
 use garde::Validate;
 use ironic::prelude::*;
+use pulsar_protocol::ApiKeyScope;
 use serde::Deserialize;
 use serde_json::{Value, json};
 

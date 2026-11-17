@@ -1,4 +1,4 @@
-//! Ultra-lean native Rust two-level agent execution engine (`agents-runtime`),
+//! Ultra-lean native Rust two-level agent execution engine (`pulsar-runtime`),
 //! branching session tree with atomic tool compaction, host hooks, and multi-provider adapters.
 
 mod batch;

@@ -2,8 +2,8 @@
 
 use std::{collections::HashMap, net::IpAddr, sync::Arc};
 
-use agents_protocol::{BoxerNodeAnnouncement, PreviewRouteSync};
 use ironic::prelude::*;
+use pulsar_protocol::{BoxerNodeAnnouncement, PreviewRouteSync};
 use serde_json::{Map, Value, json};
 use tokio::sync::Mutex;
 
@@ -134,7 +134,7 @@ impl NodeRegistryService {
             isolation: dto.isolation.clone(),
             max_concurrent_boxes: dto.max_concurrent_boxes,
             active_boxes: dto.active_boxes,
-            status: agents_protocol::NodeStatus::Online,
+            status: pulsar_protocol::NodeStatus::Online,
             last_heartbeat_ms: current_time,
             ttl_seconds: 60,
         };

@@ -2,14 +2,14 @@
 
 use std::sync::Arc;
 
-use agents_client::core::{
+use pulsar_client::core::{
     BackendTarget, ChunkCoalescer, ClientError, CoalesceOutcome, ControlAction, DraftRecord,
     DraftStore, HttpResponse, IdempotentActionQueue, InMemorySecretStore, MockTransport,
     OfflineStartupState, SandboxProvider, ScopedKeychainStore, SecretStore, ServerModeProvider,
     ThirdPartyAdapter,
 };
-use agents_client::ui::ClientController;
-use agents_protocol::{CodecId, EventEnvelope, InteractionMode, StreamPayload, ThirdPartyProvider};
+use pulsar_client::ui::ClientController;
+use pulsar_protocol::{CodecId, EventEnvelope, InteractionMode, StreamPayload, ThirdPartyProvider};
 
 fn chunk_env(seq: u64, text: &str) -> EventEnvelope {
     EventEnvelope {
@@ -82,14 +82,14 @@ async fn server_mode_provider_reconnect_replay_and_idempotent_controls() {
     ]));
 
     let provider = Arc::new(ServerModeProvider::new(
-        "https://agents.internal",
+        "https://pulsar.internal",
         transport.clone(),
     ));
     let secrets = Arc::new(InMemorySecretStore::default());
     let mut controller = ClientController::new(
         provider.clone(),
         secrets,
-        BackendTarget::remote_server("https://agents.internal"),
+        BackendTarget::remote_server("https://pulsar.internal"),
     );
 
     controller
@@ -184,8 +184,8 @@ async fn third_party_adapters_declare_honest_capabilities_and_fail_closed() {
 
 #[test]
 fn draft_recovery_offline_profile_queue_and_keychain_redaction_work() {
-    let dir = std::env::temp_dir().join(format!("agents_keychain_test_{}", std::process::id()));
-    let store = ScopedKeychainStore::new("natuleadan.agents.test", Some(dir.clone()));
+    let dir = std::env::temp_dir().join(format!("pulsar_keychain_test_{}", std::process::id()));
+    let store = ScopedKeychainStore::new("natuleadan.pulsar.test", Some(dir.clone()));
     store
         .store_secret("jwt", "super-secret-token-value")
         .unwrap();

@@ -9,8 +9,8 @@ use std::{
     time::Duration,
 };
 
-use agents_protocol::{FencingToken, TaskLease, TaskState};
 use ironic::services::scheduling::{ScheduledTask, interval};
+use pulsar_protocol::{FencingToken, TaskLease, TaskState};
 use tokio::sync::watch;
 use tracing::warn;
 

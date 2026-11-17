@@ -2,8 +2,9 @@
 
 mod common;
 
-use agents_protocol::{PermissionMask, TriggerKind, WorkflowNode};
-use agents_server::{
+use axum::http::{Method, StatusCode};
+use pulsar_protocol::{PermissionMask, TriggerKind, WorkflowNode};
+use pulsar_server::{
     ServerConfig,
     modules::{
         autocron::services::{
@@ -16,7 +17,6 @@ use agents_server::{
         },
     },
 };
-use axum::http::{Method, StatusCode};
 use serde_json::json;
 
 use common::{build_test_harness, register_and_login, send_json};

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use agents_protocol::ProxyCredentialSpec;
 use ironic::prelude::*;
+use pulsar_protocol::ProxyCredentialSpec;
 
 use crate::{
     infra::{config::ServerConfig, error::ServerError},
@@ -16,10 +16,10 @@ use crate::{
 };
 
 const RESERVED_SYSTEM_NAMES: &[&str] = &[
-    "AGENTS_JWT_SECRET",
-    "AGENTS_CREDENTIAL_MASTER_KEY",
-    "AGENTS_ADMIN_INITIAL_PASSWORD",
-    "AGENTS_POSTGRES_PASSWORD",
+    "PULSAR_JWT_SECRET",
+    "PULSAR_CREDENTIAL_MASTER_KEY",
+    "PULSAR_ADMIN_INITIAL_PASSWORD",
+    "PULSAR_POSTGRES_PASSWORD",
     "DATABASE_URL",
     "VALKEY_URL",
     "VALKEY_PASSWORD",
@@ -41,7 +41,7 @@ impl SecretService {
         scope_type: &str,
         scope_id: Option<&str>,
     ) -> String {
-        let base = std::env::var("AGENTS_CREDENTIAL_MASTER_KEY")
+        let base = std::env::var("PULSAR_CREDENTIAL_MASTER_KEY")
             .ok()
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| self.config.jwt_secret.clone());

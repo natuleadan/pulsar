@@ -187,7 +187,7 @@ fn deps_server_args(spec: &TopologySpec) -> Vec<String> {
         "--domain".to_owned(),
         spec.public_domain
             .clone()
-            .unwrap_or_else(|| "agents.example.com".to_owned()),
+            .unwrap_or_else(|| "pulsar.example.com".to_owned()),
         "--preview-domain".to_owned(),
         spec.preview_domain.clone(),
         "--acme-email".to_owned(),

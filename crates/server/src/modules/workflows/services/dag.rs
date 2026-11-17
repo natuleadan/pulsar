@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use agents_protocol::{WorkflowEdge, WorkflowNode};
+use pulsar_protocol::{WorkflowEdge, WorkflowNode};
 use serde_json::Value;
 
 use crate::infra::error::ServerError;

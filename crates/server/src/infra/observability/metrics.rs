@@ -29,27 +29,27 @@ impl DomainMetrics {
     pub fn global() -> &'static Self {
         DOMAIN_METRICS.get_or_init(|| Self {
             requests_handled: MetricsRegistry.counter(
-                "agents_domain_requests_total",
-                "Total domain HTTP requests handled by agents-server",
+                "pulsar_domain_requests_total",
+                "Total domain HTTP requests handled by pulsar-server",
             ),
             timeouts_total: MetricsRegistry.counter(
-                "agents_route_timeouts_total",
+                "pulsar_route_timeouts_total",
                 "Total controller route invocations terminated by per-route timeout",
             ),
             paginated_queries_total: MetricsRegistry.counter(
-                "agents_paginated_queries_total",
+                "pulsar_paginated_queries_total",
                 "Total paginated list queries executed with ironic::Pagination",
             ),
             lifecycle_transitions_total: MetricsRegistry.counter(
-                "agents_lifecycle_transitions_total",
+                "pulsar_lifecycle_transitions_total",
                 "Total Ironic module/application lifecycle transitions executed",
             ),
             workflow_runs_inflight: MetricsRegistry.gauge(
-                "agents_workflow_runs_inflight",
+                "pulsar_workflow_runs_inflight",
                 "Current number of in-flight workflow executions",
             ),
             request_latency_ms: MetricsRegistry.histogram(
-                "agents_domain_request_duration_ms",
+                "pulsar_domain_request_duration_ms",
                 "Middleware-observed HTTP request latency in milliseconds",
             ),
         })

@@ -6,7 +6,7 @@ use std::{
     sync::{Arc, atomic::AtomicU64},
 };
 
-use agents_protocol::{
+use pulsar_protocol::{
     EventEnvelope, FollowUpMessage, InteractionMode, PermissionMask, SteeringMessage, StopReason,
     TurnDecision,
 };

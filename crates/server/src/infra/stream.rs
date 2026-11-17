@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use agents_protocol::{CodecId, EventEnvelope, StreamPayload};
+use pulsar_protocol::{CodecId, EventEnvelope, StreamPayload};
 use sqlx::{PgPool, Row};
 use tokio::sync::Mutex;
 

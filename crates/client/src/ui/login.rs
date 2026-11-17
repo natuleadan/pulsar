@@ -1,4 +1,4 @@
-use agents_styles::prelude::*;
+use pulsar_styles::prelude::*;
 
 use crate::core::backend::BackendMode;
 use crate::core::state::{AppState, AuthState};
@@ -13,7 +13,7 @@ pub fn build_login_screen(state: &AppState, metrics: SurfaceMetrics, theme: &The
     let card_spec = CardSpec {
         variant: CardVariant::Default,
         section: CardSection {
-            title: "Sign In to Agents Orchestrator".to_owned(),
+            title: "Sign In to Pulsar Orchestrator".to_owned(),
             description: Some(
                 "Choose Server Mode or Third-Party Sandbox Adapter and authenticate cleanly."
                     .to_owned(),

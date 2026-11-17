@@ -5,7 +5,7 @@ pub mod third_party;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{Arc, Mutex};
 
-use agents_protocol::{EventEnvelope, InteractionMode, TokenPair};
+use pulsar_protocol::{EventEnvelope, InteractionMode, TokenPair};
 use serde_json::json;
 
 use crate::core::ClientError;
@@ -113,7 +113,7 @@ impl Transport for NativeReqwestTransport {
     }
 }
 
-/// Self-hosted `agents-server` provider implementing full Server Mode capabilities.
+/// Self-hosted `pulsar-server` provider implementing full Server Mode capabilities.
 pub struct ServerModeProvider {
     base_url: String,
     transport: Arc<dyn Transport>,
@@ -160,7 +160,7 @@ impl ServerModeProvider {
 
 impl SandboxProvider for ServerModeProvider {
     fn name(&self) -> &str {
-        "agents-server"
+        "pulsar-server"
     }
 
     fn capabilities(&self) -> ProviderCapabilities {

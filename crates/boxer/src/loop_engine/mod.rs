@@ -9,7 +9,7 @@ use std::{
     },
 };
 
-use agents_protocol::{
+use pulsar_protocol::{
     CodecId, EventEnvelope, FollowUpMessage, InteractionMode, PermissionMask, SteeringMessage,
     StopReason, StreamPayload, ToolPhase, TurnDecision,
 };

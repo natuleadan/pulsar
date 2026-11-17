@@ -7,16 +7,16 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use agents_protocol::{IsolationKind, RuntimeKind, SandboxProfile, SetupMode, ThirdPartyProvider};
 use clap::Parser;
+use pulsar_protocol::{IsolationKind, RuntimeKind, SandboxProfile, SetupMode, ThirdPartyProvider};
 
 use crate::error::BoxerError;
 
-/// Command-line flags and environment bindings for `agents-boxer`.
+/// Command-line flags and environment bindings for `pulsar-boxer`.
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "agents-boxer",
-    about = "Agents isolated sandbox supervisor daemon"
+    name = "pulsar-boxer",
+    about = "Pulsar isolated sandbox supervisor daemon"
 )]
 pub struct BoxerCli {
     #[arg(long, env = "BOXER_NODE_ID", default_value = "boxer-local-01")]
@@ -40,14 +40,14 @@ pub struct BoxerCli {
     #[arg(
         long,
         env = "BOXER_SANDBOX_IMAGE",
-        default_value = "ghcr.io/natuleadan/agents-sandbox:latest"
+        default_value = "ghcr.io/natuleadan/pulsar-sandbox:latest"
     )]
     pub sandbox_image: String,
 
     #[arg(
         long,
         env = "BOXER_WORKSPACE_ROOT",
-        default_value = "/tmp/agents-boxes"
+        default_value = "/tmp/pulsar-boxes"
     )]
     pub workspace_root: PathBuf,
 
@@ -95,7 +95,7 @@ pub struct BoxerCli {
     #[arg(
         long,
         env = "TRAEFIK_DYNAMIC_DIR",
-        default_value = "/tmp/agents-traefik-dynamic"
+        default_value = "/tmp/pulsar-traefik-dynamic"
     )]
     pub traefik_dynamic_dir: PathBuf,
 

@@ -1,4 +1,4 @@
-use agents_styles::prelude::*;
+use pulsar_styles::prelude::*;
 
 use crate::core::state::AppState;
 
@@ -36,7 +36,7 @@ pub fn build_cluster_and_metrics_panel(state: &AppState, theme: &Theme) -> NshNo
             &EmptyStateSpec {
                 title: "No private-VLAN Boxer workers registered".to_owned(),
                 description:
-                    "Start agents-boxer on any 10.x.x.x node to auto-register via heartbeat."
+                    "Start pulsar-boxer on any 10.x.x.x node to auto-register via heartbeat."
                         .to_owned(),
                 action_label: Some("Refresh Nodes".to_owned()),
             },

@@ -2,7 +2,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use agents_protocol::{EventEnvelope, FencingToken, SteeringMessage, SwarmMessage, TaskRequest};
+use pulsar_protocol::{EventEnvelope, FencingToken, SteeringMessage, SwarmMessage, TaskRequest};
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 use tokio::sync::{Mutex, broadcast};

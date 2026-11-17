@@ -4,8 +4,8 @@ pub mod ingress;
 
 use std::sync::Arc;
 
-use agents_protocol::ApiKeyScope;
 use ironic::{Pagination, Response, prelude::*};
+use pulsar_protocol::ApiKeyScope;
 
 pub use ingress::{SlugRenderController, WebhookIngressController};
 

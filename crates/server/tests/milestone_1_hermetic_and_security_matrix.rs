@@ -1,10 +1,10 @@
-use agents_protocol::{
+use pulsar_protocol::{
     ApiKeyScope, PluginCapabilityMask, ProviderErrorClass, classify_provider_error,
 };
-use agents_server::infra::hermetic::{HermeticEnvironment, HermeticSandbox};
-use agents_server::modules::auth::entities::AuthenticatedActor;
-use agents_server::modules::auth::guards::AgentCircuitBreaker;
-use agents_server::modules::mcp::dto::McpToolPolicy;
+use pulsar_server::infra::hermetic::{HermeticEnvironment, HermeticSandbox};
+use pulsar_server::modules::auth::entities::AuthenticatedActor;
+use pulsar_server::modules::auth::guards::AgentCircuitBreaker;
+use pulsar_server::modules::mcp::dto::McpToolPolicy;
 
 #[test]
 fn test_category_01_hermetic_sandbox_isolation_and_drop_cleanup() {

@@ -11,7 +11,7 @@ pub mod upstash_box;
 
 use std::{future::Future, path::PathBuf, pin::Pin, sync::Arc};
 
-use agents_protocol::{
+use pulsar_protocol::{
     ExecOptions, RuntimeKind, SandboxProfile, TaskStreamEvent, ThirdPartyProvider,
 };
 use tokio::sync::{mpsc, watch};

@@ -1,8 +1,8 @@
 //! Validated DTOs for creating and executing DAG workflows.
 
-use agents_protocol::{WorkflowEdge, WorkflowNode};
 use garde::Validate;
 use ironic::OpenApiSchema;
+use pulsar_protocol::{WorkflowEdge, WorkflowNode};
 use serde::Deserialize;
 use serde_json::Value;
 

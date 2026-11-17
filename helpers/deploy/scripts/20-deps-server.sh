@@ -3,13 +3,13 @@ set -euo pipefail
 
 # Provision PostgreSQL (SCRAM-SHA-256), Valkey/Redis, NATS JetStream, and Traefik TLS proxy.
 ROLE="monolithic"
-DOMAIN="agents.example.com"
+DOMAIN="pulsar.example.com"
 PREVIEW_DOMAIN="preview.example.com"
 ACME_EMAIL="ops@example.com"
 VLAN_CIDR="10.0.0.0/8"
 BIND_IP="127.0.0.1"
-ENV_FILE="/etc/agents/agents.env"
-DRY_RUN="${AGENTS_DRY_RUN:-0}"
+ENV_FILE="/etc/pulsar/pulsar.env"
+DRY_RUN="${PULSAR_DRY_RUN:-0}"
 
 usage() {
   cat <<'EOF'
@@ -101,24 +101,24 @@ else
 fi
 
 # Configure PostgreSQL SCRAM-SHA-256 without logging database credentials.
-PG_PASS="${AGENTS_POSTGRES_PASSWORD:-}"
+PG_PASS="${PULSAR_POSTGRES_PASSWORD:-}"
 if [[ "${DRY_RUN}" != "1" ]]; then
   if [[ -z "${PG_PASS}" && -r "${ENV_FILE}" ]]; then
-    PG_PASS="$(awk -F= '/^AGENTS_POSTGRES_PASSWORD=/{print substr($0, index($0,$2)); exit}' "${ENV_FILE}")"
+    PG_PASS="$(awk -F= '/^PULSAR_POSTGRES_PASSWORD=/{print substr($0, index($0,$2)); exit}' "${ENV_FILE}")"
   fi
   if [[ -z "${PG_PASS}" ]]; then
-    echo "[FAIL] AGENTS_POSTGRES_PASSWORD is required in environment or ${ENV_FILE}" >&2
+    echo "[FAIL] PULSAR_POSTGRES_PASSWORD is required in environment or ${ENV_FILE}" >&2
     exit 1
   fi
-  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DO \\\$\\\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'agents') THEN CREATE ROLE agents WITH LOGIN PASSWORD '${PG_PASS}'; ELSE ALTER ROLE agents WITH PASSWORD '${PG_PASS}'; END IF; END \\\$\\\$;\""
-  su - postgres -c "psql -tc \"SELECT 1 FROM pg_database WHERE datname = 'agents'\" | grep -q 1 || createdb -O agents agents"
+  su - postgres -c "psql -v ON_ERROR_STOP=1 -c \"DO \\\$\\\$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'pulsar') THEN CREATE ROLE pulsar WITH LOGIN PASSWORD '${PG_PASS}'; ELSE ALTER ROLE pulsar WITH PASSWORD '${PG_PASS}'; END IF; END \\\$\\\$;\""
+  su - postgres -c "psql -tc \"SELECT 1 FROM pg_database WHERE datname = 'pulsar'\" | grep -q 1 || createdb -O pulsar pulsar"
   unset PG_PASS
 else
-  echo "[DRY-RUN] ensure PostgreSQL scram-sha-256 role 'agents' and database 'agents'"
+  echo "[DRY-RUN] ensure PostgreSQL scram-sha-256 role 'pulsar' and database 'pulsar'"
 fi
 
 write_file /etc/nats/nats-server.conf <<EOF
-server_name: agents-nats-${ROLE}
+server_name: pulsar-nats-${ROLE}
 listen: ${BIND_IP}:4222
 http: 127.0.0.1:8222
 
@@ -172,7 +172,7 @@ providers:
     pollInterval: "2s"
 EOF
 
-  write_file /etc/traefik/dynamic/agents-core.yml <<'EOF'
+  write_file /etc/traefik/dynamic/pulsar-core.yml <<'EOF'
 tls:
   stores:
     default:
@@ -182,24 +182,24 @@ tls:
 
 http:
   middlewares:
-    agents-security-headers:
+    pulsar-security-headers:
       headers:
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         contentTypeNosniff: true
         frameDeny: true
   routers:
-    agents-api-https:
+    pulsar-api-https:
       rule: "PathPrefix(`/`)"
       priority: 1
       entryPoints:
         - websecure
-      service: agents-server
+      service: pulsar-server
       middlewares:
-        - agents-security-headers
+        - pulsar-security-headers
       tls: {}
   services:
-    agents-server:
+    pulsar-server:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:8080"
@@ -249,7 +249,7 @@ providers:
     pollInterval: "2s"
 EOF
 
-  write_file /etc/traefik/dynamic/agents-core.yml <<EOF
+  write_file /etc/traefik/dynamic/pulsar-core.yml <<EOF
 tls:
   stores:
     default:
@@ -259,35 +259,35 @@ tls:
 
 http:
   middlewares:
-    agents-security-headers:
+    pulsar-security-headers:
       headers:
         stsSeconds: 31536000
         stsIncludeSubdomains: true
         contentTypeNosniff: true
         frameDeny: true
   routers:
-    agents-s3-artifacts:
-      rule: "Host(\`${DOMAIN}\`) && PathPrefix(\`/agents-artifacts\`)"
+    pulsar-s3-artifacts:
+      rule: "Host(\`${DOMAIN}\`) && PathPrefix(\`/pulsar-artifacts\`)"
       priority: 20
       entryPoints:
         - websecure
-      service: agents-rustfs
+      service: pulsar-rustfs
       tls: {}
-    agents-api:
+    pulsar-api:
       rule: "Host(\`${DOMAIN}\`)"
       priority: 10
       entryPoints:
         - websecure
-      service: agents-server
+      service: pulsar-server
       middlewares:
-        - agents-security-headers
+        - pulsar-security-headers
       tls: {}
   services:
-    agents-server:
+    pulsar-server:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:8080"
-    agents-rustfs:
+    pulsar-rustfs:
       loadBalancer:
         servers:
           - url: "http://127.0.0.1:9000"
@@ -373,21 +373,21 @@ EOF
   if command -v docker >/dev/null 2>&1; then
     mkdir -p /var/lib/rustfs
     chown -R 10001:10001 /var/lib/rustfs
-    S3_ACCESS="${AGENTS_S3_ACCESS_KEY:-rustfsadmin}"
-    S3_SECRET="${AGENTS_S3_SECRET_KEY:-rustfsadmin}"
+    S3_ACCESS="${PULSAR_S3_ACCESS_KEY:-rustfsadmin}"
+    S3_SECRET="${PULSAR_S3_SECRET_KEY:-rustfsadmin}"
     if [[ -r "${ENV_FILE}" ]]; then
       ENV_ACCESS="$(awk -F= '/^S3_ACCESS_KEY=/{print substr($0, index($0,$2)); exit}' "${ENV_FILE}")"
       ENV_SECRET="$(awk -F= '/^S3_SECRET_KEY=/{print substr($0, index($0,$2)); exit}' "${ENV_FILE}")"
       [[ -n "${ENV_ACCESS}" ]] && S3_ACCESS="${ENV_ACCESS}"
       [[ -n "${ENV_SECRET}" ]] && S3_SECRET="${ENV_SECRET}"
     fi
-    docker rm -f agents-rustfs >/dev/null 2>&1 || true
-    docker run -d --name agents-rustfs --restart unless-stopped \
+    docker rm -f pulsar-rustfs >/dev/null 2>&1 || true
+    docker run -d --name pulsar-rustfs --restart unless-stopped \
       -p 127.0.0.1:9000:9000 -p 127.0.0.1:9001:9001 \
       -e "RUSTFS_ACCESS_KEY=${S3_ACCESS}" \
       -e "RUSTFS_SECRET_KEY=${S3_SECRET}" \
       -v /var/lib/rustfs:/data \
       rustfs/rustfs:latest >/dev/null
-    echo "[INFO] Started agents-rustfs S3 service on 127.0.0.1:9000"
+    echo "[INFO] Started pulsar-rustfs S3 service on 127.0.0.1:9000"
   fi
 fi

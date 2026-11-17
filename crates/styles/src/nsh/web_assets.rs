@@ -4,8 +4,8 @@ use crate::tokens::Theme;
 #[must_use]
 pub fn web_manifest_json() -> &'static str {
     r##"{
-  "name": "Agents Orchestrator",
-  "short_name": "Agents",
+  "name": "Pulsar Orchestrator",
+  "short_name": "Pulsar",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0c0a09",
@@ -22,7 +22,7 @@ pub fn index_html() -> &'static str {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Agents — NSH Control Plane</title>
+  <title>Pulsar — NSH Control Plane</title>
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/assets/app.css" />
 </head>
@@ -30,7 +30,7 @@ pub fn index_html() -> &'static str {
   <div id="app-root" data-testid="app-root" class="app-root">
     <header id="header-bar" data-testid="header-bar" class="header-bar">
       <div class="brand-group">
-        <span class="brand-mark" data-testid="brand">agents</span>
+        <span class="brand-mark" data-testid="brand">pulsar</span>
         <span class="badge" data-testid="effective-profile-badge">server · docker + openshell</span>
         <span id="auth-state-badge" data-testid="auth-state-badge" class="badge muted">Signed Out</span>
       </div>
@@ -49,7 +49,7 @@ pub fn index_html() -> &'static str {
 
     <main id="main-shell" data-testid="main-shell" class="main-shell">
       <section id="login-screen" data-testid="login-screen" class="card login-card" aria-label="Sign In">
-        <h1 class="card-title">Sign In to Agents Orchestrator</h1>
+        <h1 class="card-title">Sign In to Pulsar Orchestrator</h1>
         <p class="card-desc">Connect in Server Mode or Third-Party Sandbox Mode.</p>
         <div class="mode-tabs" role="tablist" aria-label="Connection Mode">
           <button id="mode-server-btn" data-testid="mode-server-btn" type="button" class="btn secondary active" role="tab" aria-selected="true">Server Mode</button>
@@ -101,7 +101,7 @@ pub fn index_html() -> &'static str {
               <button id="ops-apikeys-btn" type="button" class="btn outline">API Keys</button>
               <button id="ops-a2a-btn" type="button" class="btn outline">A2A &amp; Ledger</button>
             </div>
-            <pre id="ops-output" data-testid="ops-output" class="stream-box">Select an operation to query agents-server.</pre>
+            <pre id="ops-output" data-testid="ops-output" class="stream-box">Select an operation to query pulsar-server.</pre>
           </div>
 
           <div class="card">

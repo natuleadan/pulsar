@@ -67,14 +67,14 @@ jobs:
         env:
           GIT_SHA: ${{ github.sha }}
           VERGEN_GIT_SHA: ${{ github.sha }}
-        run: cargo build --release -p agents-server -p agents-boxer --target ${{ matrix.target }}
+        run: cargo build --release -p pulsar-server -p pulsar-boxer --target ${{ matrix.target }}
 
       - name: Package daemon tarball
         shell: bash
         run: |
           mkdir -p dist
-          tar -czf "dist/agents-daemons-${{ matrix.target }}.tar.gz" \
-            -C "target/${{ matrix.target }}/release" agents-server agents-boxer \
+          tar -czf "dist/pulsar-daemons-${{ matrix.target }}.tar.gz" \
+            -C "target/${{ matrix.target }}/release" pulsar-server pulsar-boxer \
             -C "${GITHUB_WORKSPACE}/helpers/deploy" scripts
 
       - uses: actions/upload-artifact@v4
@@ -121,19 +121,19 @@ jobs:
             ${{ matrix.os }}-${{ matrix.target }}-cargo-
 
       - name: Build installer CLI
-        run: cargo build --release -p agents-installer --target ${{ matrix.target }}
+        run: cargo build --release -p pulsar-installer --target ${{ matrix.target }}
 
       - name: Archive installer CLI
         shell: bash
         run: |
           mkdir -p dist
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
-            cp "target/${{ matrix.target }}/release/agents-installer.exe" dist/
-            7z a "dist/agents-installer-${{ matrix.target }}.zip" "./dist/agents-installer.exe" ./helpers/deploy/scripts
-            rm -f dist/agents-installer.exe
+            cp "target/${{ matrix.target }}/release/pulsar-installer.exe" dist/
+            7z a "dist/pulsar-installer-${{ matrix.target }}.zip" "./dist/pulsar-installer.exe" ./helpers/deploy/scripts
+            rm -f dist/pulsar-installer.exe
           else
-            tar -czf "dist/agents-installer-${{ matrix.target }}.tar.gz" \
-              -C "target/${{ matrix.target }}/release" agents-installer \
+            tar -czf "dist/pulsar-installer-${{ matrix.target }}.tar.gz" \
+              -C "target/${{ matrix.target }}/release" pulsar-installer \
               -C "${GITHUB_WORKSPACE}/helpers/deploy" scripts
           fi
 
@@ -193,40 +193,40 @@ jobs:
           mkdir -p dist
           case "${{ matrix.platform }}" in
             linux-x86_64)
-              cargo build --release -p agents-client --target ${{ matrix.rust_target }}
-              tar -czf "dist/agents-client-linux-x86_64.tar.gz" -C "target/${{ matrix.rust_target }}/release" agents-client
+              cargo build --release -p pulsar-client --target ${{ matrix.rust_target }}
+              tar -czf "dist/pulsar-client-linux-x86_64.tar.gz" -C "target/${{ matrix.rust_target }}/release" pulsar-client
               ;;
             macos-aarch64|macos-x86_64)
-              cargo build --release -p agents-client --target ${{ matrix.rust_target }}
-              APP_DIR="dist/Agents.app"
+              cargo build --release -p pulsar-client --target ${{ matrix.rust_target }}
+              APP_DIR="dist/Pulsar.app"
               mkdir -p "${APP_DIR}/Contents/MacOS" "${APP_DIR}/Contents/Resources"
-              cp "target/${{ matrix.rust_target }}/release/agents-client" "${APP_DIR}/Contents/MacOS/Agents"
+              cp "target/${{ matrix.rust_target }}/release/pulsar-client" "${APP_DIR}/Contents/MacOS/Pulsar"
               cp crates/client/nsh.json "${APP_DIR}/Contents/Resources/nsh.json"
               if [ -n "${APPLE_SIGNING_IDENTITY:-}" ]; then
                 codesign --force --options runtime --sign "${APPLE_SIGNING_IDENTITY}" "${APP_DIR}"
               else
                 codesign --force --sign - "${APP_DIR}"
               fi
-              hdiutil create -volname "Agents" -srcfolder "${APP_DIR}" -ov -format UDZO "dist/agents-client-${{ matrix.platform }}.dmg"
+              hdiutil create -volname "Pulsar" -srcfolder "${APP_DIR}" -ov -format UDZO "dist/pulsar-client-${{ matrix.platform }}.dmg"
               rm -rf "${APP_DIR}"
               ;;
             windows-x86_64)
-              cargo build --release -p agents-client --target ${{ matrix.rust_target }}
-              7z a "dist/agents-client-windows-x86_64.zip" "./target/${{ matrix.rust_target }}/release/agents-client.exe" ./crates/client/nsh.json
+              cargo build --release -p pulsar-client --target ${{ matrix.rust_target }}
+              7z a "dist/pulsar-client-windows-x86_64.zip" "./target/${{ matrix.rust_target }}/release/pulsar-client.exe" ./crates/client/nsh.json
               ;;
             android-apk)
-              cargo check -p agents-protocol -p agents-styles --target ${{ matrix.rust_target }}
+              cargo check -p pulsar-protocol -p pulsar-styles --target ${{ matrix.rust_target }}
               # NSH/NDK native APK assembly runs on release runners with Android SDK configured
-              tar -czf "dist/agents-client-android-stub.tar.gz" crates/client/nsh.json crates/client/src
+              tar -czf "dist/pulsar-client-android-stub.tar.gz" crates/client/nsh.json crates/client/src
               ;;
             ios-ipa)
-              cargo check -p agents-protocol -p agents-styles --target ${{ matrix.rust_target }}
-              tar -czf "dist/agents-client-ios-xcarchive-ready.tar.gz" crates/client/nsh.json crates/client/src
+              cargo check -p pulsar-protocol -p pulsar-styles --target ${{ matrix.rust_target }}
+              tar -czf "dist/pulsar-client-ios-xcarchive-ready.tar.gz" crates/client/nsh.json crates/client/src
               ;;
             web-wasm)
-              cargo check -p agents-protocol -p agents-styles --target wasm32-unknown-unknown
-              cargo build --release -p agents-server
-              tar -czf "dist/agents-client-web-wasm.tar.gz" crates/styles/src/nsh/web_assets.rs crates/styles/src/nsh/web_script.rs crates/client/nsh.json
+              cargo check -p pulsar-protocol -p pulsar-styles --target wasm32-unknown-unknown
+              cargo build --release -p pulsar-server
+              tar -czf "dist/pulsar-client-web-wasm.tar.gz" crates/styles/src/nsh/web_assets.rs crates/styles/src/nsh/web_script.rs crates/client/nsh.json
               ;;
           esac
 
@@ -280,7 +280,7 @@ jobs:
           shopt -s nullglob
           ASSETS=(release-assets/*.tar.gz release-assets/*.dmg release-assets/*.zip)
           node helpers/tools/release-manifest.mjs sign-manifest \
-            --id dev.natuleadan.agents \
+            --id dev.natuleadan.pulsar \
             --version "${VERSION}" \
             --base-url "${BASE_URL}" \
             --key "$RUNNER_TEMP/update.secret" \

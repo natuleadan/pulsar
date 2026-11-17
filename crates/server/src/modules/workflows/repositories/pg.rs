@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{WorkflowEdge, WorkflowNode};
+use pulsar_protocol::{WorkflowEdge, WorkflowNode};
 use sqlx::{PgPool, Row};
 
 use crate::{

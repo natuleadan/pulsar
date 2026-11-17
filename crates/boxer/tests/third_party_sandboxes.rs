@@ -2,12 +2,12 @@
 
 use std::path::PathBuf;
 
-use agents_boxer::config::BoxerConfig;
-use agents_boxer::sandbox::{
+use pulsar_boxer::config::BoxerConfig;
+use pulsar_boxer::sandbox::{
     DeepInfraSandboxRuntimeDriver, SandboxDriver, SandboxExecRequest, UpstashBoxRuntimeDriver,
     build_sandbox_driver,
 };
-use agents_protocol::{
+use pulsar_protocol::{
     ExecOptions, IsolationKind, RuntimeKind, SandboxProfile, SetupMode, ThirdPartyProvider,
 };
 use tokio::sync::watch;
@@ -85,7 +85,7 @@ async fn deepinfra_sandbox_driver_rejects_missing_token_and_handles_cancel() {
 
 #[test]
 fn build_sandbox_driver_provisions_third_party_adapters() {
-    let config = BoxerConfig::from_cli(agents_boxer::config::BoxerCli {
+    let config = BoxerConfig::from_cli(pulsar_boxer::config::BoxerCli {
         node_id: "test-node".into(),
         setup_mode: "local".into(),
         runtime: "docker".into(),

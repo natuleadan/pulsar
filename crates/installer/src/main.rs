@@ -1,7 +1,7 @@
 #![forbid(unsafe_code)]
 
-use agents_installer::cli::{Cli, execute_cli};
 use clap::Parser;
+use pulsar_installer::cli::{Cli, execute_cli};
 
 #[tokio::main]
 async fn main() {

@@ -7,7 +7,7 @@ ISOLATION="openshell"
 NATS_URL="nats://127.0.0.1:4222"
 VLAN_IP=""
 MAX_BOXES="8"
-DRY_RUN="${AGENTS_DRY_RUN:-0}"
+DRY_RUN="${PULSAR_DRY_RUN:-0}"
 
 usage() {
   cat <<'EOF'
@@ -79,16 +79,16 @@ write_file() {
 
 if [[ "${DRY_RUN}" == "1" ]]; then
   echo "[DRY-RUN] install docker.io uidmap dbus-user-session fuse-overlayfs (runtime=${RUNTIME})"
-  echo "[DRY-RUN] add agents user to docker group and ensure agents-vlan docker network"
+  echo "[DRY-RUN] add pulsar user to docker group and ensure pulsar-vlan docker network"
 else
   export DEBIAN_FRONTEND=noninteractive
   apt-get update -y
   apt-get install -y docker.io uidmap dbus-user-session fuse-overlayfs
   systemctl enable --now docker
-  if id -u agents >/dev/null 2>&1; then
-    usermod -aG docker agents
+  if id -u pulsar >/dev/null 2>&1; then
+    usermod -aG docker pulsar
   fi
-  docker network inspect agents-vlan >/dev/null 2>&1 || docker network create --driver bridge agents-vlan >/dev/null
+  docker network inspect pulsar-vlan >/dev/null 2>&1 || docker network create --driver bridge pulsar-vlan >/dev/null
 fi
 
 write_file /etc/docker/daemon.json <<'EOF'
@@ -107,7 +107,7 @@ write_file /etc/docker/daemon.json <<'EOF'
 EOF
 
 if [[ "${ISOLATION}" == "openshell" ]]; then
-  write_file /etc/agents/openshell.conf <<EOF
+  write_file /etc/pulsar/openshell.conf <<EOF
 isolation=openshell
 max_concurrent_boxes=${MAX_BOXES}
 cgroup_driver=systemd

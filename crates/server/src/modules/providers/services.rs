@@ -3,11 +3,11 @@ use std::{
     time::{Duration, Instant},
 };
 
-use agents_protocol::{
+use ironic::prelude::*;
+use pulsar_protocol::{
     DiscoveredModel, InferenceEndpointSpec, ProviderProtocol, classify_provider_error,
     parse_models_catalog_json,
 };
-use ironic::prelude::*;
 use serde_json::Value;
 
 use crate::{
@@ -33,7 +33,7 @@ pub struct ProviderService {
 
 impl ProviderService {
     fn master_key(&self) -> String {
-        std::env::var("AGENTS_CREDENTIAL_MASTER_KEY")
+        std::env::var("PULSAR_CREDENTIAL_MASTER_KEY")
             .ok()
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| self.config.jwt_secret.clone())
@@ -268,19 +268,19 @@ impl ProviderService {
         if !self.store.0.list().await?.is_empty() {
             return Ok(());
         }
-        let kind = std::env::var("AGENTS_LLM_PROVIDER")
+        let kind = std::env::var("PULSAR_LLM_PROVIDER")
             .ok()
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| "ollama".to_owned());
-        let base_url = std::env::var("AGENTS_LLM_ENDPOINT")
+        let base_url = std::env::var("PULSAR_LLM_ENDPOINT")
             .ok()
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| "http://127.0.0.1:11434/v1".to_owned());
-        let default_model = std::env::var("AGENTS_LLM_MODEL")
+        let default_model = std::env::var("PULSAR_LLM_MODEL")
             .ok()
             .filter(|s| !s.trim().is_empty())
             .unwrap_or_else(|| "llama3.2".to_owned());
-        let api_key = std::env::var("AGENTS_LLM_API_KEY")
+        let api_key = std::env::var("PULSAR_LLM_API_KEY")
             .ok()
             .filter(|s| !s.trim().is_empty())
             .or_else(|| self.config.deepinfra_token.clone())

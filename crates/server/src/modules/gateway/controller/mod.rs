@@ -5,7 +5,6 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use agents_protocol::{ApiKeyScope, EventEnvelope};
 use axum::{
     Router,
     extract::{
@@ -21,6 +20,7 @@ use axum::{
 };
 use futures_util::{SinkExt, StreamExt};
 use ironic::prelude::*;
+use pulsar_protocol::{ApiKeyScope, EventEnvelope};
 
 use crate::{
     infra::error::{ErrorResponse, validate_dto},

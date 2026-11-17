@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use agents_protocol::ApiKeyScope;
 use ironic::{Pagination, Response, prelude::*};
+use pulsar_protocol::ApiKeyScope;
 
 use crate::{
     infra::{

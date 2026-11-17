@@ -132,7 +132,7 @@ impl Middleware for TraceContextMiddleware {
                 Ok(mut response) => {
                     let status = response.status().as_u16();
                     ::tracing::info!(
-                        target: "agents_server::http::access",
+                        target: "pulsar_server::http::access",
                         method = %method,
                         path = %path,
                         status,
@@ -155,7 +155,7 @@ impl Middleware for TraceContextMiddleware {
                 Err(err) => {
                     let status = err.status().as_u16();
                     ::tracing::warn!(
-                        target: "agents_server::http::access",
+                        target: "pulsar_server::http::access",
                         method = %method,
                         path = %path,
                         status,

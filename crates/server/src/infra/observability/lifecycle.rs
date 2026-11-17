@@ -134,7 +134,7 @@ impl OnModuleInit for LifecycleManager {
         Self::record_transition("on_module_init", None);
         Box::pin(async {
             let log_dir =
-                std::env::var("AGENTS_LOG_DIR").unwrap_or_else(|_| ".logs/server".to_owned());
+                std::env::var("PULSAR_LOG_DIR").unwrap_or_else(|_| ".logs/server".to_owned());
             let writable = std::fs::create_dir_all(&log_dir).is_ok();
             let db_configured = std::env::var("DATABASE_URL")
                 .ok()

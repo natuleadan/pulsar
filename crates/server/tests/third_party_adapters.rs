@@ -1,10 +1,10 @@
 //! Hexagonal ports and adapters tests for third-party cloud integration.
 
-use agents_server::infra::adapters::{
+use pulsar_server::infra::adapters::{
     BlobStorePort, InfrastructureRegistry, LocalFsBlobStore, QstashMessageBus, VectorMatch,
     VectorStorePort, vector::InMemoryVectorStore,
 };
-use agents_server::infra::config::{ConfigError, InfrastructureMode, ServerConfig};
+use pulsar_server::infra::config::{ConfigError, InfrastructureMode, ServerConfig};
 use sha2::{Digest, Sha256};
 
 fn compute_hmac_hex(key: &[u8], msg: &[u8]) -> String {
@@ -74,7 +74,7 @@ async fn in_memory_vector_store_indexes_and_queries_by_cosine_similarity() {
 
 #[tokio::test]
 async fn local_fs_blob_store_puts_gets_and_blocks_path_traversal() {
-    let temp_dir = std::env::temp_dir().join(format!("agents-blob-test-{}", uuid::Uuid::new_v4()));
+    let temp_dir = std::env::temp_dir().join(format!("pulsar-blob-test-{}", uuid::Uuid::new_v4()));
     let store = LocalFsBlobStore::new(temp_dir.clone());
 
     let data = b"hello artifact blob data".to_vec();

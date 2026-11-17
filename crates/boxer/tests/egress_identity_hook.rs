@@ -3,12 +3,12 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use agents_boxer::proxy::{EgressIdentityPolicy, OutboundCredentialProxy};
-use agents_protocol::{
+use axum::{Json, Router, http::HeaderMap, routing::get};
+use pulsar_boxer::proxy::{EgressIdentityPolicy, OutboundCredentialProxy};
+use pulsar_protocol::{
     HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
     InstallationIdentityHeaders,
 };
-use axum::{Json, Router, http::HeaderMap, routing::get};
 use serde_json::{Value, json};
 use tokio::{net::TcpListener, sync::Mutex};
 

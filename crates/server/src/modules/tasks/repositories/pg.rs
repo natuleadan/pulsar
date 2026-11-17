@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{CursorPage, FencingToken, InteractionMode, StopReason, TaskState};
+use pulsar_protocol::{CursorPage, FencingToken, InteractionMode, StopReason, TaskState};
 use sqlx::{PgPool, Row};
 
 use crate::{

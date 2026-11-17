@@ -15,8 +15,8 @@ const SSH_OPTS = [
 ];
 
 export function resolveBinaryDir(root) {
-  if (process.env.AGENTS_BIN_DIR && existsSync(join(process.env.AGENTS_BIN_DIR, "agents-server"))) {
-    return process.env.AGENTS_BIN_DIR;
+  if (process.env.PULSAR_BIN_DIR && existsSync(join(process.env.PULSAR_BIN_DIR, "pulsar-server"))) {
+    return process.env.PULSAR_BIN_DIR;
   }
   const targets = [
     join(root, "target/x86_64-unknown-linux-gnu/release"),
@@ -25,9 +25,9 @@ export function resolveBinaryDir(root) {
     join(root, "target/debug"),
   ];
   for (const dir of targets) {
-    if (existsSync(join(dir, "agents-server"))) return dir;
+    if (existsSync(join(dir, "pulsar-server"))) return dir;
   }
-  throw new Error("Missing built agents-server binary; specify AGENTS_BIN_DIR or build target");
+  throw new Error("Missing built pulsar-server binary; specify PULSAR_BIN_DIR or build target");
 }
 
 function runSsh(keyPath, targetHost, cmd, jumpHost = "") {
@@ -72,18 +72,18 @@ async function waitForHttpOk(url, timeoutMs = 60_000) {
 }
 
 function deployBinaries(root, binDir, keyPath, targetHost, jumpHost = "") {
-  runSsh(keyPath, targetHost, "mkdir -p /opt/agents /usr/local/bin", jumpHost);
-  for (const bin of ["agents-server", "agents-boxer", "agents-installer"]) {
+  runSsh(keyPath, targetHost, "mkdir -p /opt/pulsar /usr/local/bin", jumpHost);
+  for (const bin of ["pulsar-server", "pulsar-boxer", "pulsar-installer"]) {
     const src = join(binDir, bin);
     if (existsSync(src)) {
       runScp(keyPath, src, `${targetHost}:/usr/local/bin/${bin}`, jumpHost);
     }
   }
-  runScp(keyPath, join(root, "helpers/deploy/scripts"), `${targetHost}:/opt/agents/`, jumpHost);
+  runScp(keyPath, join(root, "helpers/deploy/scripts"), `${targetHost}:/opt/pulsar/`, jumpHost);
   runSsh(
     keyPath,
     targetHost,
-    "chmod +x /usr/local/bin/agents-* /opt/agents/scripts/*.sh && bash /opt/agents/scripts/00-preflight.sh",
+    "chmod +x /usr/local/bin/pulsar-* /opt/pulsar/scripts/*.sh && bash /opt/pulsar/scripts/00-preflight.sh",
     jumpHost,
   );
 }
@@ -99,18 +99,18 @@ export async function verifyRemoteMonolithic({ root, vps, keyPath, keepDemo, log
   const publicUrl = `http://${vps.publicIpv4}:8080`;
   const startCmd = [
     "nohup env",
-    "AGENTS_BIND_ADDR=0.0.0.0:8080",
-    `AGENTS_PUBLIC_URL=${publicUrl}`,
-    `AGENTS_TRUSTED_ORIGINS=${publicUrl}`,
-    `AGENTS_JWT_SECRET=${jwtSecret}`,
-    "AGENTS_RATE_LIMIT_MAX=1000",
-    "/usr/local/bin/agents-server serve >/var/log/agents-server.log 2>&1 </dev/null &",
+    "PULSAR_BIND_ADDR=0.0.0.0:8080",
+    `PULSAR_PUBLIC_URL=${publicUrl}`,
+    `PULSAR_TRUSTED_ORIGINS=${publicUrl}`,
+    `PULSAR_JWT_SECRET=${jwtSecret}`,
+    "PULSAR_RATE_LIMIT_MAX=1000",
+    "/usr/local/bin/pulsar-server serve >/var/log/pulsar-server.log 2>&1 </dev/null &",
   ].join(" ");
   runSsh(keyPath, host, startCmd);
 
   const ready = await waitForHttpOk(`${publicUrl}/health/ready`);
   const html = await waitForHttpOk(`${publicUrl}/`);
-  if (!html.includes("Agents") || !html.includes("login-screen")) {
+  if (!html.includes("Pulsar") || !html.includes("login-screen")) {
     throw new Error(`Unexpected root Web UI payload from ${publicUrl}/`);
   }
   logger(`[LIVE] Monolithic OK: ${publicUrl}/health/ready (${ready.slice(0, 60)})`);
@@ -134,12 +134,12 @@ export async function verifyRemoteDistributed({ root, serverVps, boxerVps, keyPa
     srvHost,
     [
       "nohup env",
-      "AGENTS_BIND_ADDR=0.0.0.0:8080",
-      `AGENTS_PUBLIC_URL=${publicUrl}`,
-      `AGENTS_TRUSTED_ORIGINS=${publicUrl}`,
-      `AGENTS_JWT_SECRET=${jwtSecret}`,
-      "AGENTS_RATE_LIMIT_MAX=1000",
-      "/usr/local/bin/agents-server serve >/var/log/agents-server.log 2>&1 </dev/null &",
+      "PULSAR_BIND_ADDR=0.0.0.0:8080",
+      `PULSAR_PUBLIC_URL=${publicUrl}`,
+      `PULSAR_TRUSTED_ORIGINS=${publicUrl}`,
+      `PULSAR_JWT_SECRET=${jwtSecret}`,
+      "PULSAR_RATE_LIMIT_MAX=1000",
+      "/usr/local/bin/pulsar-server serve >/var/log/pulsar-server.log 2>&1 </dev/null &",
     ].join(" "),
   );
   await waitForHttpOk(`${publicUrl}/health/ready`);
@@ -150,11 +150,11 @@ export async function verifyRemoteDistributed({ root, serverVps, boxerVps, keyPa
   runSsh(
     keyPath,
     boxHost,
-    `nohup env BOXER_NODE_ID=${boxerVps.name} SERVER_INTERNAL_URL=http://${serverVps.vlanIp}:8080 NATS_URL=nats://${serverVps.vlanIp}:4222 /usr/local/bin/agents-boxer >/var/log/agents-boxer.log 2>&1 </dev/null &`,
+    `nohup env BOXER_NODE_ID=${boxerVps.name} SERVER_INTERNAL_URL=http://${serverVps.vlanIp}:8080 NATS_URL=nats://${serverVps.vlanIp}:4222 /usr/local/bin/pulsar-boxer >/var/log/pulsar-boxer.log 2>&1 </dev/null &`,
     srvHost,
   );
   const html = await waitForHttpOk(`${publicUrl}/`);
-  if (!html.includes("Agents") || !html.includes("login-screen")) {
+  if (!html.includes("Pulsar") || !html.includes("login-screen")) {
     throw new Error(`Unexpected root Web UI payload from ${publicUrl}/`);
   }
   logger(`[LIVE] Distributed control plane OK at ${publicUrl}/ (private boxer ${boxerVps.vlanIp})`);

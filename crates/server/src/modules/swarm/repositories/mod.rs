@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use agents_protocol::PermissionMask;
+use pulsar_protocol::PermissionMask;
 use sqlx::{PgPool, Row};
 use tokio::sync::Mutex;
 

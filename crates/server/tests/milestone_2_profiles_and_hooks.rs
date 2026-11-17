@@ -1,4 +1,4 @@
-use agents_server::modules::{
+use pulsar_server::modules::{
     plugins::{
         hooks::{HookDispatcher, HookFailurePolicy, HookStage, RegisteredHook},
         instincts::{AtomicInstinct, FactMemory, MemoryInstinctStore, MemoryProvenance},

@@ -5,7 +5,7 @@ use std::{
     time::Duration,
 };
 
-use agents_bridge::{
+use pulsar_bridge::{
     DeadManWatchdog, LocalDeviceRegistry, PairingGateway, Ros2TopicBridge, SerialBridgeError,
     SerialBridgeManager, SerialDeviceStatus, TwistMessage, is_private_lan_ip, validate_outbound_ip,
     validate_twist_limits,

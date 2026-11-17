@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use agents_protocol::{EventEnvelope, InteractionMode, ThirdPartyProvider, TokenPair};
+use pulsar_protocol::{EventEnvelope, InteractionMode, ThirdPartyProvider, TokenPair};
 use serde_json::json;
 
 use crate::core::ClientError;
@@ -84,7 +84,7 @@ impl ThirdPartyAdapter {
             }
             ThirdPartyProvider::Daytona => {
                 h.insert("authorization".to_owned(), format!("Bearer {token}"));
-                h.insert("x-daytona-source".to_owned(), "agents-client".to_owned());
+                h.insert("x-daytona-source".to_owned(), "pulsar-client".to_owned());
             }
             ThirdPartyProvider::DeepInfra => {
                 h.insert("authorization".to_owned(), format!("Bearer {token}"));

@@ -4,7 +4,7 @@
 
 use std::path::{Path, PathBuf};
 
-use agents_protocol::{AgentHandoff, PermissionMask, SwarmMessage, SwarmTopic};
+use pulsar_protocol::{AgentHandoff, PermissionMask, SwarmMessage, SwarmTopic};
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 

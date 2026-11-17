@@ -3,10 +3,10 @@ set -euo pipefail
 
 # Preflight verification for Debian/Ubuntu LTS hosts before provisioning.
 OS_RELEASE_FILE="${OS_RELEASE_FILE:-/etc/os-release}"
-MIN_RAM_MB="${AGENTS_MIN_RAM_MB:-1024}"
-MIN_DISK_MB="${AGENTS_MIN_DISK_MB:-8192}"
-ALLOW_NON_ROOT="${AGENTS_ALLOW_NON_ROOT:-0}"
-DRY_RUN="${AGENTS_DRY_RUN:-0}"
+MIN_RAM_MB="${PULSAR_MIN_RAM_MB:-1024}"
+MIN_DISK_MB="${PULSAR_MIN_DISK_MB:-8192}"
+ALLOW_NON_ROOT="${PULSAR_ALLOW_NON_ROOT:-0}"
+DRY_RUN="${PULSAR_DRY_RUN:-0}"
 ROLE="monolithic"
 
 usage() {

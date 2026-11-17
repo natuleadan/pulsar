@@ -1,8 +1,8 @@
-use agents_protocol::WorkerStatus;
-use agents_styles::{ColorRgba, PaletteTokens, Theme, ThemeMode};
+use pulsar_protocol::WorkerStatus;
+use pulsar_styles::{ColorRgba, PaletteTokens, Theme, ThemeMode};
 use ratatui::style::{Color, Modifier, Style};
 
-/// Maps [`agents_styles::Theme`] design tokens cleanly to `ratatui` terminal styles.
+/// Maps [`pulsar_styles::Theme`] design tokens cleanly to `ratatui` terminal styles.
 #[derive(Debug, Clone)]
 pub struct TuiTheme {
     pub bg: Color,

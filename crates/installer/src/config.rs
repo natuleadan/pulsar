@@ -1,8 +1,8 @@
 use std::net::{IpAddr, Ipv4Addr};
 use std::path::{Path, PathBuf};
 
-use agents_protocol::{IsolationKind, RuntimeKind};
 use clap::ValueEnum;
+use pulsar_protocol::{IsolationKind, RuntimeKind};
 use serde::{Deserialize, Serialize};
 
 use crate::error::InstallerError;
@@ -149,11 +149,11 @@ fn validate_boxer_isolation(
         ));
     }
     let setup_mode = if *runtime == RuntimeKind::RemoteVps {
-        agents_protocol::SetupMode::Remote
+        pulsar_protocol::SetupMode::Remote
     } else {
-        agents_protocol::SetupMode::Local
+        pulsar_protocol::SetupMode::Local
     };
-    agents_protocol::SandboxProfile {
+    pulsar_protocol::SandboxProfile {
         mode: setup_mode,
         runtime: runtime.clone(),
         isolation: isolation.clone(),

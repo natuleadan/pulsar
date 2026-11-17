@@ -1,4 +1,4 @@
-use agents_styles::prelude::*;
+use pulsar_styles::prelude::*;
 
 #[test]
 fn light_and_dark_themes_meet_wcag_contrast_and_export_nsh_json() {

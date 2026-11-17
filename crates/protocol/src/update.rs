@@ -146,7 +146,7 @@ mod tests {
         );
 
         let manifest = UpdateManifest {
-            id: "dev.natuleadan.agents".into(),
+            id: "dev.natuleadan.pulsar".into(),
             version: "0.2.0".into(),
             channel: UpdateChannel::Stable,
             notes: "Stable security release".into(),
@@ -173,7 +173,7 @@ mod tests {
         );
 
         let manifest = UpdateManifest {
-            id: "dev.natuleadan.agents".into(),
+            id: "dev.natuleadan.pulsar".into(),
             version: "0.2.0".into(),
             channel: UpdateChannel::Nightly,
             notes: "Nightly build".into(),

@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use agents_protocol::SandboxProfile;
+use pulsar_protocol::SandboxProfile;
 use serde::{Deserialize, Serialize};
 
 /// Request to provision a new sandbox container.

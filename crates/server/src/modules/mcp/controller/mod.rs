@@ -2,7 +2,6 @@
 
 use std::sync::Arc;
 
-use agents_protocol::ApiKeyScope;
 use axum::{
     Json as AxumJson, Router,
     body::{Body, to_bytes},
@@ -12,6 +11,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use ironic::prelude::*;
+use pulsar_protocol::ApiKeyScope;
 use serde_json::{Value, json};
 
 use crate::{

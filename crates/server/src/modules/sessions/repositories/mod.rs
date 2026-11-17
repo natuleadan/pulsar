@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{CursorPage, InteractionMode, TriStateFilter};
+use pulsar_protocol::{CursorPage, InteractionMode, TriStateFilter};
 use sqlx::{PgPool, Row};
 use tokio::sync::Mutex;
 

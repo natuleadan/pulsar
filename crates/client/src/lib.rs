@@ -1,8 +1,8 @@
 #![forbid(unsafe_code)]
-//! Multi-platform client workspace (`core`, `tui`, `ui`) built on [`agents_styles`] and [`agents_protocol`].
+//! Multi-platform client workspace (`core`, `tui`, `ui`) built on [`pulsar_styles`] and [`pulsar_protocol`].
 
 pub mod core;
 pub mod tui;
 pub mod ui;
 
-pub use agents_styles as styles;
+pub use pulsar_styles as styles;

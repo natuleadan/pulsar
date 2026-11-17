@@ -9,13 +9,13 @@ use a2a::{
     ApiKeySecurityScheme, Artifact, JsonRpcError, JsonRpcId, JsonRpcRequest, JsonRpcResponse,
     Message, Part, Role, SecurityScheme, Task, TaskState, TaskStatus,
 };
-use agents_protocol::{
-    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
-};
 use axum::http::HeaderMap;
 use chrono::Utc;
 use garde::Validate;
 use ironic::{Injectable, OpenApiSchema};
+use pulsar_protocol::{
+    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use tracing::info;
@@ -104,7 +104,7 @@ impl A2aService {
         let org_name = active_identity
             .as_ref()
             .map(|i| i.organization_name.clone())
-            .unwrap_or_else(|| "Agents Orchestrator".to_owned());
+            .unwrap_or_else(|| "Pulsar Orchestrator".to_owned());
         let installation_id = active_identity
             .as_ref()
             .map(|i| i.installation_id.clone())
@@ -158,7 +158,7 @@ impl A2aService {
                 streaming: Some(false),
                 push_notifications: Some(false),
                 extensions: Some(vec![AgentExtension {
-                    uri: "urn:agents:installation-identity:v1".to_owned(),
+                    uri: "urn:pulsar:installation-identity:v1".to_owned(),
                     description: Some(
                         "Installation-wide organization, alphanumeric ID, and signed identity code headers."
                             .to_owned(),

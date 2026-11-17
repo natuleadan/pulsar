@@ -1,18 +1,18 @@
-//! `agents-migrate` standalone CLI for zero-downtime database export, import, and verification.
+//! `pulsar-migrate` standalone CLI for zero-downtime database export, import, and verification.
 
 #![forbid(unsafe_code)]
 
 use std::{fs, path::PathBuf};
 
-use agents_server::{
+use clap::{Parser, Subcommand};
+use pulsar_server::{
     MigrationSnapshot, ServerConfig, export_snapshot, import_snapshot, verify_database,
 };
-use clap::{Parser, Subcommand};
 use sqlx::postgres::PgPoolOptions;
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "agents-migrate",
+    name = "pulsar-migrate",
     version,
     about = "Data migration engine between Topología A (Self-Hosted) and Topología B (Cloud-Native)"
 )]

@@ -2,9 +2,9 @@
 
 mod common;
 
-use agents_protocol::{CodecId, EventEnvelope, PermissionMask, StreamPayload, WorkerStatus};
-use agents_server::{ServerConfig, infra::bus::TwoLaneEventFeedBuffer};
 use axum::http::{Method, StatusCode};
+use pulsar_protocol::{CodecId, EventEnvelope, PermissionMask, StreamPayload, WorkerStatus};
+use pulsar_server::{ServerConfig, infra::bus::TwoLaneEventFeedBuffer};
 use serde_json::json;
 
 use common::{build_test_harness, register_and_login, send_json};

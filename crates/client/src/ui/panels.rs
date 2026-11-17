@@ -1,4 +1,4 @@
-use agents_styles::prelude::*;
+use pulsar_styles::prelude::*;
 
 use crate::core::state::{ActiveView, AppState};
 
@@ -18,7 +18,7 @@ pub fn build_header_bar(state: &AppState, theme: &Theme, compact: bool) -> NshNo
         .padding(theme.spacing.md)
         .bg(p.card)
         .border(p.border)
-        .child(NshNode::text("brand", "agents").fg(p.foreground))
+        .child(NshNode::text("brand", "pulsar").fg(p.foreground))
         .child(
             NshNode::badge("effective-profile-badge", &state.effective_profile.label)
                 .bg(badge_style.background)

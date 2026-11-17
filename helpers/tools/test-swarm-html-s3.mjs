@@ -55,7 +55,7 @@ async function run() {
   console.log(`  PASS: Created session ${sessionId}`);
 
   console.log("[4/8] Agent 1 (Header Specialist) produces navigation component...");
-  const headerHtml = `<header class="bg-indigo-900 text-white p-6 shadow-md"><div class="container mx-auto flex justify-between items-center"><h1 class="text-2xl font-bold tracking-tight">Natuleadan Sovereign Agents Studio</h1><nav class="space-x-4"><a href="#features" class="hover:text-indigo-300 font-medium">Features</a><a href="#architecture" class="hover:text-indigo-300 font-medium">Architecture</a><a href="#status" class="hover:text-indigo-300 font-medium">Status</a></nav></div></header>`;
+  const headerHtml = `<header class="bg-indigo-900 text-white p-6 shadow-md"><div class="container mx-auto flex justify-between items-center"><h1 class="text-2xl font-bold tracking-tight">Natuleadan Pulsar Studio</h1><nav class="space-x-4"><a href="#features" class="hover:text-indigo-300 font-medium">Features</a><a href="#architecture" class="hover:text-indigo-300 font-medium">Architecture</a><a href="#status" class="hover:text-indigo-300 font-medium">Status</a></nav></div></header>`;
   const bbHeader = await req(`/api/v1/sessions/${sessionId}/swarm/blackboard`, "POST", {
     key: "component_header",
     value: { html: headerHtml, author: "agent-1-header", status: "ready" },
@@ -73,7 +73,7 @@ async function run() {
   console.log("  PASS: Agent 2 posted body to shared blackboard.");
 
   console.log("[6/8] Agent 3 (Scripts & Footer Specialist) produces interactivity & footer...");
-  const footerHtml = `<footer class="bg-slate-900 text-slate-400 p-6 text-center text-sm border-t border-slate-800"><p>&copy; 2026 Natuleadan Agents. Sovereign distributed orchestrator. Built with Rust, Boxer & S3.</p></footer><script>console.log("Multi-Agent HTML loaded successfully.");</script>`;
+  const footerHtml = `<footer class="bg-slate-900 text-slate-400 p-6 text-center text-sm border-t border-slate-800"><p>&copy; 2026 Natuleadan Pulsar. Sovereign distributed orchestrator. Built with Rust, Boxer & S3.</p></footer><script>console.log("Multi-Agent HTML loaded successfully.");</script>`;
   const bbFooter = await req(`/api/v1/sessions/${sessionId}/swarm/blackboard`, "POST", {
     key: "component_footer",
     value: { html: footerHtml, author: "agent-3-footer", status: "ready" },
@@ -94,7 +94,7 @@ async function run() {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Natuleadan Sovereign Agents Studio</title>
+  <title>Natuleadan Pulsar Studio</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col justify-between font-sans">
@@ -136,7 +136,7 @@ ${r3.json.value.html}
   const directRes = await fetch(presignedUrl);
   assert.equal(directRes.status, 200, `Direct S3 fetch returned status ${directRes.status}`);
   const directBody = await directRes.text();
-  assert(directBody.includes("Natuleadan Sovereign Agents Studio"), "Missing title");
+  assert(directBody.includes("Natuleadan Pulsar Studio"), "Missing title");
   assert(directBody.includes("Agent 1: Navigation"), "Missing Agent 1 section");
   assert(directBody.includes("Agent 2: Body Architecture"), "Missing Agent 2 section");
   assert(directBody.includes("Agent 3: Scripts & Footer"), "Missing Agent 3 section");

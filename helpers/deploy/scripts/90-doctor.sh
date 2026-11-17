@@ -3,8 +3,8 @@ set -euo pipefail
 
 # Non-destructive health and security audit reporting PASS/FAIL/SKIP.
 ROLE="monolithic"
-ENV_FILE="${AGENTS_ENV_FILE:-/etc/agents/agents.env}"
-SSHD_CONF="${AGENTS_SSHD_CONF:-/etc/ssh/sshd_config.d/99-agents-hardening.conf}"
+ENV_FILE="${PULSAR_ENV_FILE:-/etc/pulsar/pulsar.env}"
+SSHD_CONF="${PULSAR_SSHD_CONF:-/etc/ssh/sshd_config.d/99-pulsar-hardening.conf}"
 NON_DESTRUCTIVE="1"
 
 usage() {
@@ -85,7 +85,7 @@ if [[ -f "${ENV_FILE}" ]]; then
   else
     fail "Environment file permissions too open (${PERMS}); expected 600 or 640"
   fi
-  for key in AGENTS_JWT_SECRET AGENTS_CREDENTIAL_MASTER_KEY; do
+  for key in PULSAR_JWT_SECRET PULSAR_CREDENTIAL_MASTER_KEY; do
     if grep -qE "^${key}=.+" "${ENV_FILE}"; then
       pass "Required secret key populated: ${key}"
     else
@@ -118,17 +118,17 @@ fi
 
 if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running >/dev/null 2>&1; then
   if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "server" ]]; then
-    if systemctl is-active --quiet agents-server.service; then
-      pass "Service active: agents-server.service"
+    if systemctl is-active --quiet pulsar-server.service; then
+      pass "Service active: pulsar-server.service"
     else
-      fail "Service inactive: agents-server.service"
+      fail "Service inactive: pulsar-server.service"
     fi
   fi
   if [[ "${ROLE}" == "monolithic" || "${ROLE}" == "boxer" ]]; then
-    if systemctl is-active --quiet agents-boxer.service; then
-      pass "Service active: agents-boxer.service"
+    if systemctl is-active --quiet pulsar-boxer.service; then
+      pass "Service active: pulsar-boxer.service"
     else
-      fail "Service inactive: agents-boxer.service"
+      fail "Service inactive: pulsar-boxer.service"
     fi
   fi
 else

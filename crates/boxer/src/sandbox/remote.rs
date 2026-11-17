@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use agents_protocol::TaskStreamEvent;
+use pulsar_protocol::TaskStreamEvent;
 use tokio::sync::{mpsc, watch};
 
 use crate::{

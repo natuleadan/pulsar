@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use agents_protocol::{FollowUpMessage, InteractionMode, TurnDecision};
+use pulsar_protocol::{FollowUpMessage, InteractionMode, TurnDecision};
 use serde_json::Value;
 
 use crate::{

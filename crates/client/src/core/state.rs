@@ -1,5 +1,5 @@
-use agents_protocol::{InteractionMode, SetupMode, WorkerStatus};
-use agents_styles::ThemeMode;
+use pulsar_protocol::{InteractionMode, SetupMode, WorkerStatus};
+use pulsar_styles::ThemeMode;
 use serde::{Deserialize, Serialize};
 
 use super::backend::{BackendMode, BackendTarget, ControlAction, EffectiveProfile};
@@ -236,7 +236,7 @@ impl Default for AppState {
             latency_samples_ms: vec![18.0, 22.0, 15.0, 24.0, 14.0],
             token_samples: vec![1200.0, 3400.0, 5100.0, 6800.0],
             provider_choices: vec![
-                "agents-server".to_owned(),
+                "pulsar-server".to_owned(),
                 "upstash_box".to_owned(),
                 "daytona".to_owned(),
                 "deepinfra".to_owned(),
@@ -342,7 +342,7 @@ pub fn dispatch(state: &mut AppState, action: AppAction) {
                     BackendTarget::local_server("http://127.0.0.1:8080").effective_profile()
                 }
                 SetupMode::Remote => {
-                    BackendTarget::remote_server("https://agents.internal").effective_profile()
+                    BackendTarget::remote_server("https://pulsar.internal").effective_profile()
                 }
             };
         }

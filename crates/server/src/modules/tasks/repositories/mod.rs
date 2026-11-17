@@ -5,7 +5,7 @@ pub mod pg;
 
 use std::sync::Arc;
 
-use agents_protocol::{CursorPage, FencingToken, InteractionMode, StopReason, TaskState};
+use pulsar_protocol::{CursorPage, FencingToken, InteractionMode, StopReason, TaskState};
 
 use crate::{
     infra::{error::ServerError, state::BoxFuture},

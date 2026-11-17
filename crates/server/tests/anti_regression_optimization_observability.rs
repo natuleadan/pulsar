@@ -15,10 +15,6 @@ mod common;
 
 use std::path::Path;
 
-use agents_server::{
-    ServerConfig,
-    infra::{LifecycleManager, W3cTraceContext, inject_w3c_traceparent, slice_paginated},
-};
 use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
@@ -26,6 +22,10 @@ use axum::{
 use common::{build_test_harness, register_and_login, send_json};
 use http_body_util::BodyExt;
 use ironic::ShutdownSignal;
+use pulsar_server::{
+    ServerConfig,
+    infra::{LifecycleManager, W3cTraceContext, inject_w3c_traceparent, slice_paginated},
+};
 use serde_json::Value;
 use tower::ServiceExt;
 
@@ -44,7 +44,7 @@ async fn anti_regression_metrics_endpoints_and_provider_health() {
     let bytes = resp.into_body().collect().await.unwrap().to_bytes();
     let body_str = String::from_utf8_lossy(&bytes);
     assert!(
-        body_str.contains("ironic_http_") || body_str.contains("agents_domain_"),
+        body_str.contains("ironic_http_") || body_str.contains("pulsar_domain_"),
         "metrics must contain framework or domain counters"
     );
 
@@ -336,11 +336,11 @@ fn anti_regression_source_level_rules() {
 
 #[tokio::test]
 async fn anti_regression_jsonl_log_storage_query_and_blob_archive() {
-    use agents_server::infra::{
+    use ironic::logging::{FileLogStorage, LogEntry, LogStorage};
+    use pulsar_server::infra::{
         adapters::{BlobStorePort, LocalFsBlobStore},
         observability::{SystemLogQueryDto, archive_logs_to_blob, query_jsonl_logs},
     };
-    use ironic::logging::{FileLogStorage, LogEntry, LogStorage};
     use std::collections::BTreeMap;
 
     let tmp = std::env::temp_dir().join(format!("obs_test_{}", uuid::Uuid::new_v4()));
@@ -359,7 +359,7 @@ async fn anti_regression_jsonl_log_storage_query_and_blob_archive() {
         .store(LogEntry {
             timestamp: chrono::Utc::now(),
             level: "ERROR".to_owned(),
-            target: "agents_server::mcp".to_owned(),
+            target: "pulsar_server::mcp".to_owned(),
             message: "mcp dispatch failure".to_owned(),
             module_path: None,
             file: None,
@@ -372,7 +372,7 @@ async fn anti_regression_jsonl_log_storage_query_and_blob_archive() {
         .store(LogEntry {
             timestamp: chrono::Utc::now(),
             level: "INFO".to_owned(),
-            target: "agents_server::health".to_owned(),
+            target: "pulsar_server::health".to_owned(),
             message: "health ok".to_owned(),
             module_path: None,
             file: None,

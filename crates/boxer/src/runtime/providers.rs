@@ -3,7 +3,7 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use agents_protocol::{
+use pulsar_protocol::{
     ProviderErrorClass, StopReason, classify_provider_error, scrub_sensitive_tokens,
 };
 use serde::{Deserialize, Serialize};

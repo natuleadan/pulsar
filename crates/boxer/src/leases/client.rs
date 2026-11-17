@@ -7,7 +7,6 @@ use std::{
     sync::{Arc, atomic::Ordering},
 };
 
-use agents_protocol::{FencingToken, StopReason, TaskLease, TaskState};
 use bytes::Bytes;
 use http::{Request, header};
 use http_body_util::{BodyExt, Full};
@@ -15,6 +14,7 @@ use hyper_util::{
     client::legacy::{Client, connect::HttpConnector},
     rt::TokioExecutor,
 };
+use pulsar_protocol::{FencingToken, StopReason, TaskLease, TaskState};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 

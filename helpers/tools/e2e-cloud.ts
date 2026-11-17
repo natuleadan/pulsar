@@ -203,7 +203,7 @@ export function detectDirectSshBlocked(host = "github.com"): boolean {
 export function buildTopologyPayloads(cfg: CloudConfig, runId: string) {
   const sshIds = cfg.sshKeyId ? [Number(cfg.sshKeyId)] : [];
   const monolithic = {
-    name: `agents-e2e-mono-${runId}`,
+    name: `pulsar-e2e-mono-${runId}`,
     label: "monolithic",
     plan_name: cfg.plan,
     location_name: cfg.region,
@@ -215,7 +215,7 @@ export function buildTopologyPayloads(cfg: CloudConfig, runId: string) {
     enable_backups: false,
   };
   const distServer = {
-    name: `agents-e2e-srv-${runId}`,
+    name: `pulsar-e2e-srv-${runId}`,
     label: "server",
     plan_name: cfg.plan,
     location_name: cfg.region,
@@ -227,7 +227,7 @@ export function buildTopologyPayloads(cfg: CloudConfig, runId: string) {
     enable_backups: false,
   };
   const distBoxer = {
-    name: `agents-e2e-box-${runId}`,
+    name: `pulsar-e2e-box-${runId}`,
     label: "boxer",
     plan_name: cfg.plan,
     location_name: cfg.region,

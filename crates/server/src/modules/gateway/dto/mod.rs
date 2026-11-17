@@ -1,8 +1,8 @@
 //! WebSocket bidirectional control frames and SSE replay DTOs.
 
-use agents_protocol::{EventEnvelope, HandshakeRequest, HandshakeResponse};
 use garde::Validate;
 use ironic::OpenApiSchema;
+use pulsar_protocol::{EventEnvelope, HandshakeRequest, HandshakeResponse};
 use serde::{Deserialize, Serialize};
 
 /// Query parameters for replaying or streaming session events after a given sequence number.

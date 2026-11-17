@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use agents_protocol::{
+use pulsar_protocol::{
     ConfigDiagnosticSeverity, ConfigLayer, ConfigScope, ConversationMessage, EffectiveSettings,
     ProviderErrorClass, ProviderProtocol, StateInvariantError, TaskState, ToolDecisionKind,
     ToolDefinition, ToolPolicyRule, TwoTierSessionBinding, UniversalCompletionRequest,
@@ -277,7 +277,7 @@ fn monotonic_tool_decision_sink_state_and_env_hygiene() {
     let mut host_env = BTreeMap::new();
     host_env.insert("HOME".to_owned(), "/home/agent".to_owned());
     host_env.insert(
-        "AGENTS_JWT_SECRET".to_owned(),
+        "PULSAR_JWT_SECRET".to_owned(),
         "super-secret-jwt-key".to_owned(),
     );
     host_env.insert(
@@ -288,7 +288,7 @@ fn monotonic_tool_decision_sink_state_and_env_hygiene() {
 
     let allowlist = vec![
         "HOME".to_owned(),
-        "AGENTS_JWT_SECRET".to_owned(),
+        "PULSAR_JWT_SECRET".to_owned(),
         "DATABASE_URL".to_owned(),
     ];
     let clean_env = build_hygienic_tool_env(&host_env, &allowlist, &BTreeMap::new());
@@ -300,7 +300,7 @@ fn monotonic_tool_decision_sink_state_and_env_hygiene() {
         clean_env.get("NLA_SANDBOXED").map(String::as_str),
         Some("1")
     );
-    assert!(!clean_env.contains_key("AGENTS_JWT_SECRET"));
+    assert!(!clean_env.contains_key("PULSAR_JWT_SECRET"));
     assert!(!clean_env.contains_key("DATABASE_URL"));
     assert!(!clean_env.contains_key("OPENAI_API_KEY"));
 }

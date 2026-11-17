@@ -176,7 +176,7 @@ mod tests {
         let signed = sign_request(
             "PUT",
             "http://127.0.0.1:9000",
-            "/agents-artifacts/tasks/s1/out.txt",
+            "/pulsar-artifacts/tasks/s1/out.txt",
             "us-east-1",
             "rustfsadmin",
             "rustfssecret",
@@ -196,7 +196,7 @@ mod tests {
 
         let url = presign_get_url(
             "http://127.0.0.1:9000",
-            "agents-artifacts",
+            "pulsar-artifacts",
             "tasks/s1/out.txt",
             "us-east-1",
             "rustfsadmin",

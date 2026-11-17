@@ -3,7 +3,7 @@
 //! Ingests arbitrary OpenAPI 3.0/3.1 or Swagger specifications and dynamically
 //! synthesizes valid Model Context Protocol tool manifests.
 
-use agents_protocol::PluginToolDefinition;
+use pulsar_protocol::PluginToolDefinition;
 use serde_json::{Value, json};
 use std::collections::BTreeMap;
 

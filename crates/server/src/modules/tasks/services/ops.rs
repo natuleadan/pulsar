@@ -1,6 +1,6 @@
 //! Follow-up and cancellation operations for [`TaskService`].
 
-use agents_protocol::{FollowUpMessage, StreamPayload, WorkerStatus};
+use pulsar_protocol::{FollowUpMessage, StreamPayload, WorkerStatus};
 
 use crate::{
     infra::{error::ServerError, state::now_ms, stream::emit_stream_event},
@@ -106,7 +106,7 @@ impl TaskService {
         let _ = self
             .bus
             .0
-            .publish_task_cancel(box_id, session_id, agents_protocol::FencingToken(u64::MAX))
+            .publish_task_cancel(box_id, session_id, pulsar_protocol::FencingToken(u64::MAX))
             .await;
         let _ = emit_stream_event(
             &self.streams,

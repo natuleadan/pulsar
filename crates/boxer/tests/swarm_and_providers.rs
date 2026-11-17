@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use agents_boxer::{
+use pulsar_boxer::{
     error::BoxerError,
     runtime::{ProviderEndpointConfig, ProviderKind, ProviderRegistry},
     swarm::{
@@ -8,7 +8,7 @@ use agents_boxer::{
         swarm_nats_subject, validate_child_handoff, verify_swarm_signature,
     },
 };
-use agents_protocol::{PermissionMask, SwarmTopic};
+use pulsar_protocol::{PermissionMask, SwarmTopic};
 use serde_json::json;
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
@@ -114,8 +114,8 @@ fn provider_registry_and_swarm_asi05_asi07_and_worktree_drop_guard() -> TestResu
 
 #[test]
 fn universal_llm_tool_calls_parsing_test() {
-    use agents_boxer::runtime::providers::parse_tool_calls_and_reason;
-    use agents_protocol::StopReason;
+    use pulsar_boxer::runtime::providers::parse_tool_calls_and_reason;
+    use pulsar_protocol::StopReason;
     use serde_json::json;
 
     // 1. OpenAI / DeepSeek format

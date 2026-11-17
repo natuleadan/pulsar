@@ -3,7 +3,7 @@
 
 use std::time::Duration;
 
-use agents_protocol::InteractionMode;
+use pulsar_protocol::InteractionMode;
 
 use crate::{
     infra::{error::ServerError, state::now_ms},

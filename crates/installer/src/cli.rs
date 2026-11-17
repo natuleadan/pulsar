@@ -1,8 +1,8 @@
 use std::net::Ipv4Addr;
 use std::path::PathBuf;
 
-use agents_protocol::{IsolationKind, RuntimeKind};
 use clap::{Args, Parser, Subcommand};
+use pulsar_protocol::{IsolationKind, RuntimeKind};
 
 use crate::config::{ClusterMode, TopologySpec};
 use crate::doctor::DoctorReport;
@@ -15,8 +15,8 @@ use crate::runner::{SystemExecutor, run_plan};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "agents-installer",
-    about = "Hardened VPS provisioning and diagnostic CLI for agents clusters"
+    name = "pulsar-installer",
+    about = "Hardened VPS provisioning and diagnostic CLI for Pulsar clusters"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -51,7 +51,7 @@ pub struct TopologyArgs {
     pub ssh_key_path: Option<PathBuf>,
     #[arg(long, default_value = "helpers/deploy/scripts")]
     pub scripts_dir: PathBuf,
-    #[arg(long, default_value = "/etc/agents/agents.env")]
+    #[arg(long, default_value = "/etc/pulsar/pulsar.env")]
     pub env_file_path: PathBuf,
 }
 

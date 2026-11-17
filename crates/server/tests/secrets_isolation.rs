@@ -2,9 +2,9 @@
 
 mod common;
 
-use agents_server::{ServerConfig, modules::secrets::services::SecretService};
 use axum::http::{Method, StatusCode};
 use common::{build_test_harness, register_and_login, send_json};
+use pulsar_server::{ServerConfig, modules::secrets::services::SecretService};
 use serde_json::json;
 
 #[tokio::test]
@@ -28,7 +28,7 @@ async fn secrets_enforce_system_separation_non_readable_metadata_group_and_worke
         Some(&alice_jwt),
         Some(json!({
             "id": "sys-jwt",
-            "name": "AGENTS_JWT_SECRET",
+            "name": "PULSAR_JWT_SECRET",
             "scopeType": "owner_shared",
             "targetHost": "example.com",
             "value": "override-attempt"
@@ -258,7 +258,7 @@ async fn universal_providers_discovery_fallback_chain_and_handshake_classificati
     let prov_svc = harness
         .app
         .container()
-        .resolve::<agents_server::modules::providers::ProviderService>()
+        .resolve::<pulsar_server::modules::providers::ProviderService>()
         .await
         .expect("resolve ProviderService");
     let resolved = prov_svc

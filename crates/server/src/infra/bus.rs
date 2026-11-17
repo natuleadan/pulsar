@@ -6,12 +6,12 @@ use std::{
     sync::Arc,
 };
 
-use agents_protocol::{
+use async_nats::jetstream::{self, stream};
+use futures_util::StreamExt;
+use pulsar_protocol::{
     CodecId, EventEnvelope, EventFeedLane, FencingToken, SteeringMessage, StreamPayload,
     SwarmMessage, TaskRequest,
 };
-use async_nats::jetstream::{self, stream};
-use futures_util::StreamExt;
 use tokio::sync::{Mutex, broadcast};
 
 use crate::infra::{error::ServerError, state::BoxFuture};
@@ -284,10 +284,10 @@ impl MessageBus for NatsMessageBus {
     ) -> BoxFuture<'a, Result<(), ServerError>> {
         Box::pin(async move {
             let subject = match &msg.to {
-                agents_protocol::SwarmTopic::Broadcast => {
+                pulsar_protocol::SwarmTopic::Broadcast => {
                     format!("swarm.{}.broadcast", msg.session_id)
                 }
-                agents_protocol::SwarmTopic::DirectAgent(agent_id) => {
+                pulsar_protocol::SwarmTopic::DirectAgent(agent_id) => {
                     format!("swarm.{}.agent.{agent_id}", msg.session_id)
                 }
             };

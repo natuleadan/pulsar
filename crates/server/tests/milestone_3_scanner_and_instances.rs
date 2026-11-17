@@ -1,5 +1,5 @@
-use agents_protocol::ProviderProtocol;
-use agents_server::modules::{
+use pulsar_protocol::ProviderProtocol;
+use pulsar_server::modules::{
     plugins::scanner::{
         DiagnosticStatus, ExtensionDoctor, InstalledFileRecord, PluginInstallManifest,
     },
@@ -8,7 +8,7 @@ use agents_server::modules::{
 
 #[test]
 fn extension_doctor_audits_manifest_and_cleans_safely() {
-    let tmp_path = std::env::temp_dir().join(format!("agents_doc_test_{}", std::process::id()));
+    let tmp_path = std::env::temp_dir().join(format!("pulsar_doc_test_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&tmp_path);
     std::fs::create_dir_all(&tmp_path).unwrap();
     let base = &tmp_path;

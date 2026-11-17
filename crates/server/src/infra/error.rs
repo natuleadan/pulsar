@@ -1,7 +1,7 @@
 //! Unified server domain errors mapped cleanly to Ironic `HttpError` and RPC codes.
 
-use agents_protocol::RpcErrorCode;
 use ironic::{HttpError, HttpStatus};
+use pulsar_protocol::RpcErrorCode;
 use thiserror::Error;
 
 /// Domain-level server errors translated to safe HTTP or RPC responses.

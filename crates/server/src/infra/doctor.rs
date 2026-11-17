@@ -75,7 +75,7 @@ impl DoctorReport {
         println!(
             "================================================================================"
         );
-        println!("AGENTS-SERVER DOCTOR: PREFLIGHT TOPOLOGY REPORT");
+        println!("PULSAR-SERVER DOCTOR: PREFLIGHT TOPOLOGY REPORT");
         println!(
             "================================================================================"
         );
@@ -363,7 +363,7 @@ async fn check_sandbox_runtime(config: &ServerConfig) -> DoctorItem {
             DoctorItem {
                 name: "Sandbox Runtime".to_owned(),
                 status: CheckStatus::Pass,
-                message: "agents-boxer host process execution ready".to_owned(),
+                message: "pulsar-boxer host process execution ready".to_owned(),
                 latency_ms: None,
             }
         }

@@ -13,7 +13,7 @@ pub struct ObservabilityPlugin;
 
 impl Plugin for ObservabilityPlugin {
     fn name(&self) -> &'static str {
-        "agents-observability"
+        "pulsar-observability"
     }
 
     fn version(&self) -> &'static str {

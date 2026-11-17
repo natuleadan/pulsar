@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use agents_protocol::TraefikPreviewRoute;
+use pulsar_protocol::TraefikPreviewRoute;
 use tokio::sync::Mutex;
 
 use crate::{

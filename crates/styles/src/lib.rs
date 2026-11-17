@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 //! Reusable design system, component specifications, and NSH-inspired reactive
-//! cross-platform UI primitives for `natuleadan/agents` and companion Rust apps.
+//! cross-platform UI primitives for `natuleadan/pulsar` and companion Rust apps.
 //!
 //! Architecture follows the three-layer Native Shell (NSH) model:
 //! 1. **Tokens** ([`tokens`]): Light/dark semantic color palettes, typography, spacing, and radii

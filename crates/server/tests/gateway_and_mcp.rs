@@ -2,14 +2,14 @@
 
 mod common;
 
-use agents_protocol::{API_GENERATION, Capability, CodecId, HandshakeRequest, StreamPayload};
-use agents_server::{ServerConfig, modules::gateway::services::GatewayService};
 use axum::{
     body::Body,
     http::{Method, Request, StatusCode},
 };
 use futures_util::{SinkExt, StreamExt};
 use http_body_util::BodyExt;
+use pulsar_protocol::{API_GENERATION, Capability, CodecId, HandshakeRequest, StreamPayload};
+use pulsar_server::{ServerConfig, modules::gateway::services::GatewayService};
 use serde_json::{Value, json};
 use tokio::net::TcpListener;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
@@ -264,10 +264,10 @@ async fn websocket_gateway_handshake_steer_and_pause_resume_reconciliation() {
         .resolve::<GatewayService>()
         .await
         .unwrap();
-    let actor = agents_server::modules::auth::entities::AuthenticatedActor {
+    let actor = pulsar_server::modules::auth::entities::AuthenticatedActor {
         user_id: alice_id,
         email: "alice@example.com".to_owned(),
-        scopes: vec![agents_protocol::ApiKeyScope::Write],
+        scopes: vec![pulsar_protocol::ApiKeyScope::Write],
         auth_method: "jwt".to_owned(),
     };
     gw.emit_event(

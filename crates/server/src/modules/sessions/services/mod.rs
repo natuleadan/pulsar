@@ -4,8 +4,8 @@ pub mod persistence;
 
 use std::{sync::Arc, time::Duration};
 
-use agents_protocol::{CursorPage, InteractionMode};
 use ironic::prelude::*;
+use pulsar_protocol::{CursorPage, InteractionMode};
 use serde_json::json;
 
 use crate::{

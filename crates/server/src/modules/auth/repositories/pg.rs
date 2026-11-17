@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use agents_protocol::ApiKeyScope;
+use pulsar_protocol::ApiKeyScope;
 use sqlx::{PgPool, Row};
 
 use crate::{

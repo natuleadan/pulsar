@@ -2,13 +2,13 @@
 
 use std::sync::Arc;
 
-use agents_protocol::{
-    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
-    is_valid_alphanumeric_id, is_valid_organization_name,
-};
 use axum::http::{HeaderMap, HeaderName, HeaderValue};
 use chrono::Utc;
 use ironic::Injectable;
+use pulsar_protocol::{
+    HEADER_AGENT_IDENTITY_CODE, HEADER_AGENT_INSTALLATION_ID, HEADER_AGENT_ORGANIZATION,
+    is_valid_alphanumeric_id, is_valid_organization_name,
+};
 use serde_json::{Value, json};
 use tracing::info;
 
@@ -49,28 +49,28 @@ impl IdentityService {
     pub async fn resolve_installation_identity(
         &self,
     ) -> Result<Option<InstallationIdentityRecord>, ServerError> {
-        let env_org = std::env::var("AGENTS_ORG_NAME")
+        let env_org = std::env::var("PULSAR_ORG_NAME")
             .ok()
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty());
-        let env_id = std::env::var("AGENTS_INSTALLATION_ID")
+        let env_id = std::env::var("PULSAR_INSTALLATION_ID")
             .ok()
             .map(|s| s.trim().to_owned())
             .filter(|s| !s.is_empty());
 
         if let (Some(organization_name), Some(installation_id)) = (env_org, env_id) {
-            let identity_code = std::env::var("AGENTS_IDENTITY_CODE")
+            let identity_code = std::env::var("PULSAR_IDENTITY_CODE")
                 .ok()
                 .map(|s| s.trim().to_owned())
                 .filter(|s| !s.is_empty());
-            let registrar_url = std::env::var("AGENTS_IDENTITY_REGISTRAR_URL")
+            let registrar_url = std::env::var("PULSAR_IDENTITY_REGISTRAR_URL")
                 .ok()
                 .map(|s| s.trim().to_owned())
                 .filter(|s| !s.is_empty());
-            let strict_inbound_webhooks = std::env::var("AGENTS_STRICT_INBOUND_WEBHOOKS")
+            let strict_inbound_webhooks = std::env::var("PULSAR_STRICT_INBOUND_WEBHOOKS")
                 .map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
                 .unwrap_or(false);
-            let strict_outbound_egress = std::env::var("AGENTS_STRICT_OUTBOUND_EGRESS")
+            let strict_outbound_egress = std::env::var("PULSAR_STRICT_OUTBOUND_EGRESS")
                 .map(|v| matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
                 .unwrap_or(true);
 

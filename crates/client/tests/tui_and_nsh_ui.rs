@@ -2,20 +2,20 @@
 
 use std::sync::Arc;
 
-use agents_client::core::adapters::NativeReqwestTransport;
-use agents_client::core::{
+use pulsar_client::core::adapters::NativeReqwestTransport;
+use pulsar_client::core::{
     ActiveView, AppAction, AppState, AttachmentEntry, BackendTarget, ContextMeter, DiffHunk,
     DiffLine, DiffLineKind, InMemorySecretStore, ServerModeProvider, SubagentDrawerMessage,
     SwarmForkEntry, ThinkingEntry, UpdateInfo, WorkerEntry, dispatch,
 };
-use agents_client::styles::{SurfaceMetrics, TargetPlatform};
-use agents_client::tui::{TuiKey, map_key, render_tui};
-use agents_client::ui::{ClientController, render_app_shell};
-use agents_protocol::{
+use pulsar_client::styles::{SurfaceMetrics, TargetPlatform};
+use pulsar_client::tui::{TuiKey, map_key, render_tui};
+use pulsar_client::ui::{ClientController, render_app_shell};
+use pulsar_protocol::{
     CodecId, EventEnvelope, InteractionMode, SetupMode, StreamPayload, ThirdPartyProvider,
     TraefikPreviewRoute, WorkerStatus,
 };
-use agents_server::{InfrastructureHandles, ServerConfig, build_application};
+use pulsar_server::{InfrastructureHandles, ServerConfig, build_application};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
 use serde_json::json;
@@ -197,7 +197,7 @@ async fn end_to_end_login_session_prompt_stream_and_live_preview_against_server(
     });
 
     let base_url = format!("http://{addr}");
-    // Register a real user against the running agents-server HTTP listener.
+    // Register a real user against the running pulsar-server HTTP listener.
     let raw_http = reqwest::Client::new();
     let reg = raw_http
         .post(format!("{base_url}/api/v1/auth/register"))

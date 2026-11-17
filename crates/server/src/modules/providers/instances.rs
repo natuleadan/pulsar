@@ -3,7 +3,7 @@
 //! Enables multiple accounts, OAuth subscriptions, and workgroup-specific provider binding.
 
 use crate::infra::error::ServerError;
-use agents_protocol::ProviderProtocol;
+use pulsar_protocol::ProviderProtocol;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::sync::RwLock;

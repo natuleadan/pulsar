@@ -81,7 +81,7 @@ test("DropGuard cleans up all provisioned VPS nodes even when a step throws", as
   try {
     await assert.rejects(
       withDropGuard(created, client, false, async () => {
-        const mono = await client.createVps("4601", { name: "agents-e2e-fail", ipv4: true });
+        const mono = await client.createVps("4601", { name: "pulsar-e2e-fail", ipv4: true });
         created.push(mono);
         assert.equal(servers.size, 1);
         throw new Error("simulated provision failure");

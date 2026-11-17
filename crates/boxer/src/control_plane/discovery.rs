@@ -1,4 +1,4 @@
-//! Boxer worker node autodiscovery and periodic heartbeats to agents-server.
+//! Boxer worker node autodiscovery and periodic heartbeats to pulsar-server.
 
 use std::{sync::Arc, time::Duration};
 
@@ -39,7 +39,7 @@ fn compute_hmac_hex(key: &[u8], msg: &[u8]) -> String {
 
 static HEARTBEAT_SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
-/// Spawns an Ironic-native periodic task that announces Boxer capacity and node status to agents-server
+/// Spawns an Ironic-native periodic task that announces Boxer capacity and node status to pulsar-server
 /// via HMAC-SHA256 signed `POST /api/v1/nodes/register`.
 pub fn start_autodiscovery_heartbeat(
     config: Arc<BoxerConfig>,
@@ -60,7 +60,7 @@ pub fn start_autodiscovery_heartbeat(
             let seq = HEARTBEAT_SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
             let health = svc.health().await;
             let register_url = format!("{}/api/v1/nodes/register", cfg.server_internal_url);
-            let node_ip = std::env::var("AGENTS_NODE_IP")
+            let node_ip = std::env::var("PULSAR_NODE_IP")
                 .ok()
                 .map(|s| s.trim().to_owned())
                 .filter(|s| !s.is_empty())
@@ -126,14 +126,14 @@ pub fn start_autodiscovery_heartbeat(
                     warn!(
                         node_id = %cfg.node_id,
                         status = %resp.status(),
-                        "Boxer signed registration heartbeat rejected by agents-server"
+                        "Boxer signed registration heartbeat rejected by pulsar-server"
                     );
                 }
                 Err(err) => {
                     debug!(
                         node_id = %cfg.node_id,
                         error = %err,
-                        "autodiscovery heartbeat could not reach agents-server (retrying next tick)"
+                        "autodiscovery heartbeat could not reach pulsar-server (retrying next tick)"
                     );
                 }
             }

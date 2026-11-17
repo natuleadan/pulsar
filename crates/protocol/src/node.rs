@@ -17,7 +17,7 @@ pub enum NodeStatus {
     Offline,
 }
 
-/// Auto-registration heartbeat announced by any private-VLAN `agents-boxer` instance.
+/// Auto-registration heartbeat announced by any private-VLAN `pulsar-boxer` instance.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BoxerNodeAnnouncement {

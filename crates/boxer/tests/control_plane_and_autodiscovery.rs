@@ -7,7 +7,12 @@
 
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use agents_boxer::{
+use axum::{
+    body::Body,
+    http::{Request, StatusCode},
+};
+use http_body_util::BodyExt;
+use pulsar_boxer::{
     config::{BoxerCli, BoxerConfig},
     control_plane::{
         BoxerControlPlaneService, build_control_plane_router,
@@ -20,11 +25,6 @@ use agents_boxer::{
         start_autodiscovery_heartbeat,
     },
 };
-use axum::{
-    body::Body,
-    http::{Request, StatusCode},
-};
-use http_body_util::BodyExt;
 use tower::ServiceExt;
 
 fn test_config() -> (Arc<BoxerConfig>, tempfile::TempDir) {
@@ -36,7 +36,7 @@ fn test_config() -> (Arc<BoxerConfig>, tempfile::TempDir) {
         isolation: "none".into(),
         allow_host_native: true,
         openshell_gateway_url: None,
-        sandbox_image: "ghcr.io/natuleadan/agents-sandbox:latest".into(),
+        sandbox_image: "ghcr.io/natuleadan/pulsar-sandbox:latest".into(),
         workspace_root: tmp.path().to_path_buf(),
         max_concurrent_boxes: 4,
         nats_url: "nats://127.0.0.1:4222".into(),
@@ -84,7 +84,7 @@ async fn anti_regression_boxer_control_plane_crud_and_vfs() {
         .await
         .unwrap();
     let spec: serde_json::Value = serde_json::from_slice(&doc_bytes).unwrap();
-    assert_eq!(spec["info"]["title"], "agents-boxer API");
+    assert_eq!(spec["info"]["title"], "pulsar-boxer API");
     assert!(spec["paths"]["/v1/box"].is_object());
 
     let scalar_req = Request::builder().uri("/docs").body(Body::empty()).unwrap();

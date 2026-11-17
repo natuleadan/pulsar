@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Real headless Chromium visual, layout, contrast, and E2E login verification against agents-server.
+// Real headless Chromium visual, layout, contrast, and E2E login verification against pulsar-server.
 import { spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import net from "node:net";
@@ -95,16 +95,16 @@ class CdpClient {
 async function run() {
   const port = await freePort();
   const baseUrl = `http://127.0.0.1:${port}`;
-  const serverBin = join(process.cwd(), "target/debug/agents-server");
-  const chromeDataDir = mkdtempSync(join(tmpdir(), "agents-chrome-"));
+  const serverBin = join(process.cwd(), "target/debug/pulsar-server");
+  const chromeDataDir = mkdtempSync(join(tmpdir(), "pulsar-chrome-"));
 
   const serverProc = spawn(serverBin, ["serve"], {
     env: {
       ...process.env,
-      AGENTS_BIND_ADDR: `127.0.0.1:${port}`,
-      AGENTS_PUBLIC_URL: baseUrl,
-      AGENTS_TRUSTED_ORIGINS: baseUrl,
-      AGENTS_RATE_LIMIT_MAX: "1000",
+      PULSAR_BIND_ADDR: `127.0.0.1:${port}`,
+      PULSAR_PUBLIC_URL: baseUrl,
+      PULSAR_TRUSTED_ORIGINS: baseUrl,
+      PULSAR_RATE_LIMIT_MAX: "1000",
       RUST_LOG: "warn",
     },
     stdio: ["ignore", "pipe", "pipe"],

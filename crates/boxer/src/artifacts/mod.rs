@@ -2,7 +2,7 @@
 
 use std::path::{Path, PathBuf};
 
-use agents_protocol::{ArtifactEntry, ArtifactManifest};
+use pulsar_protocol::{ArtifactEntry, ArtifactManifest};
 use sha2::{Digest, Sha256};
 
 use crate::{config::now_ms, error::BoxerError};

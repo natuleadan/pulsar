@@ -1,5 +1,5 @@
 [package]
-name = "agents-boxer"
+name = "pulsar-boxer"
 version.workspace = true
 edition.workspace = true
 description = "Sandbox container runner, dual-loop supervisor, and Traefik preview daemon"
@@ -7,7 +7,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-agents-protocol = { path = "../protocol" }
+pulsar-protocol = { path = "../protocol" }
 async-nats = "0.42"
 base64 = "0.22"
 axum = { version = "0.8", features = ["ws"] }

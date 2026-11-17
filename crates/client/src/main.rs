@@ -1,22 +1,22 @@
 use std::sync::Arc;
 
-use agents_client::core::adapters::{NativeReqwestTransport, ServerModeProvider};
-use agents_client::core::backend::SandboxProvider;
-use agents_client::core::state::AppState;
-use agents_client::tui::run_live_tui;
-use agents_client::ui::shell::render_app_shell;
-use agents_protocol::InteractionMode;
-use agents_styles::prelude::{SurfaceMetrics, TargetPlatform};
 use clap::{Parser, Subcommand};
+use pulsar_client::core::adapters::{NativeReqwestTransport, ServerModeProvider};
+use pulsar_client::core::backend::SandboxProvider;
+use pulsar_client::core::state::AppState;
+use pulsar_client::tui::run_live_tui;
+use pulsar_client::ui::shell::render_app_shell;
+use pulsar_protocol::InteractionMode;
+use pulsar_styles::prelude::{SurfaceMetrics, TargetPlatform};
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "agents-client",
+    name = "pulsar-client",
     version,
-    about = "Native terminal, web, and automation client for agents-server"
+    about = "Native terminal, web, and automation client for pulsar-server"
 )]
 struct Cli {
-    /// Base URL of the agents-server instance.
+    /// Base URL of the pulsar-server instance.
     #[arg(long, default_value = "http://127.0.0.1:8080")]
     server_url: String,
     /// Optional bearer token or API key for authenticated server calls.
@@ -37,20 +37,20 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
-    /// Launch the interactive terminal user interface wired to agents-server.
+    /// Launch the interactive terminal user interface wired to pulsar-server.
     Tui,
     /// Print the reactive HTML shell configured with the target server URL.
     Ui,
     /// Print client profile status and effective capabilities.
     Status,
-    /// Authenticate against agents-server and print the issued token pair JSON.
+    /// Authenticate against pulsar-server and print the issued token pair JSON.
     Login {
         #[arg(long)]
         email: String,
         #[arg(long)]
         password: String,
     },
-    /// List connected boxer nodes via agents-server.
+    /// List connected boxer nodes via pulsar-server.
     Nodes,
     /// Submit a prompt to an existing or newly created session.
     Prompt {
@@ -58,9 +58,9 @@ enum Commands {
         session_id: Option<String>,
         prompt: String,
     },
-    /// List configured workflows via agents-server.
+    /// List configured workflows via pulsar-server.
     Workflows,
-    /// List autocron schedules via agents-server.
+    /// List autocron schedules via pulsar-server.
     Autocron,
 }
 
@@ -84,18 +84,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_ansi(false)
             .with_writer(std::sync::Mutex::new(file))
             .try_init();
-        tracing::info!(path = %log_path.display(), "agents-client file logger initialized");
+        tracing::info!(path = %log_path.display(), "pulsar-client file logger initialized");
     }
     let server_url = if cli.server_url == "http://127.0.0.1:8080" {
-        std::env::var("AGENTS_SERVER_URL").unwrap_or(cli.server_url)
+        std::env::var("PULSAR_SERVER_URL").unwrap_or(cli.server_url)
     } else {
         cli.server_url
     };
-    let token = cli.token.or_else(|| std::env::var("AGENTS_TOKEN").ok());
-    let email = cli.email.or_else(|| std::env::var("AGENTS_EMAIL").ok());
+    let token = cli.token.or_else(|| std::env::var("PULSAR_TOKEN").ok());
+    let email = cli.email.or_else(|| std::env::var("PULSAR_EMAIL").ok());
     let password = cli
         .password
-        .or_else(|| std::env::var("AGENTS_PASSWORD").ok());
+        .or_else(|| std::env::var("PULSAR_PASSWORD").ok());
 
     let mut state = AppState::default();
     state.login.server_url = server_url.clone();
@@ -116,7 +116,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Commands::Status => {
             println!(
-                "agents-client ready: {}",
+                "pulsar-client ready: {}",
                 serde_json::to_string_pretty(&state.effective_profile)?
             );
         }
@@ -125,12 +125,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", serde_json::to_string_pretty(&pair)?);
         }
         Commands::Nodes => {
-            let tok = token.ok_or("missing --token (or AGENTS_TOKEN) for nodes query")?;
+            let tok = token.ok_or("missing --token (or PULSAR_TOKEN) for nodes query")?;
             let nodes = provider.list_nodes(&tok).await?;
             println!("{}", serde_json::to_string_pretty(&nodes)?);
         }
         Commands::Prompt { session_id, prompt } => {
-            let tok = token.ok_or("missing --token (or AGENTS_TOKEN) for prompt submission")?;
+            let tok = token.ok_or("missing --token (or PULSAR_TOKEN) for prompt submission")?;
             let sid = match session_id {
                 Some(id) => id,
                 None => {
@@ -148,12 +148,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("{}", serde_json::to_string_pretty(&sub)?);
         }
         Commands::Workflows => {
-            let tok = token.ok_or("missing --token (or AGENTS_TOKEN) for workflows query")?;
+            let tok = token.ok_or("missing --token (or PULSAR_TOKEN) for workflows query")?;
             let workflows = provider.list_workflows(&tok).await?;
             println!("{}", serde_json::to_string_pretty(&workflows)?);
         }
         Commands::Autocron => {
-            let tok = token.ok_or("missing --token (or AGENTS_TOKEN) for autocron query")?;
+            let tok = token.ok_or("missing --token (or PULSAR_TOKEN) for autocron query")?;
             let schedules = provider.list_autocron_schedules(&tok).await?;
             println!("{}", serde_json::to_string_pretty(&schedules)?);
         }

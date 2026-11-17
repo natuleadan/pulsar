@@ -1,4 +1,4 @@
-# natuleadan-agents
+# natuleadan-pulsar
 
 Distributed, self-sustaining Rust agent harness combining an Ironic API orchestrator,
 NATS JetStream swarm messaging, Valkey ephemeral state, PostgreSQL persistence,
@@ -6,12 +6,12 @@ modular Boxer sandbox execution, Traefik ephemeral previews, and multi-platform 
 
 ## Crates
 
-- **`agents-protocol`**: Shared protocol contracts, named codecs, JSON-RPC, and event streaming DTOs.
-- **`agents-styles`**: Reusable cross-platform design tokens, component specs, and NSH-inspired UI primitives.
-- **`agents-server`**: Central orchestrator daemon with Ironic NestJS-like modules, PostgreSQL, Valkey, NATS, MCP host, and autocron engine.
-- **`agents-boxer`**: Sandbox daemon supervising `Runtime x Isolation` backends (`host`, `docker`, `openshell`), Traefik preview routes, and the native 2-level agent loop.
-- **`agents-installer`**: VPS provisioning CLI coordinating external `.sh` hardening and cluster setup scripts.
-- **`agents-client`**: Shared `client-core`, `client-tui`, and multi-platform `nsh` GUI (`web`, `ios`, `android`, `macos`, `windows`, `linux`) with `Server` and `Third-Party` modes.
+- **`pulsar-protocol`**: Shared protocol contracts, named codecs, JSON-RPC, and event streaming DTOs.
+- **`pulsar-styles`**: Reusable cross-platform design tokens, component specs, and NSH-inspired UI primitives.
+- **`pulsar-server`**: Central orchestrator daemon with Ironic NestJS-like modules, PostgreSQL, Valkey, NATS, MCP host, and autocron engine.
+- **`pulsar-boxer`**: Sandbox daemon supervising `Runtime x Isolation` backends (`host`, `docker`, `openshell`), Traefik preview routes, and the native 2-level agent loop.
+- **`pulsar-installer`**: VPS provisioning CLI coordinating external `.sh` hardening and cluster setup scripts.
+- **`pulsar-client`**: Shared `client-core`, `client-tui`, and multi-platform `nsh` GUI (`web`, `ios`, `android`, `macos`, `windows`, `linux`) with `Server` and `Third-Party` modes.
 
 ## Development
 

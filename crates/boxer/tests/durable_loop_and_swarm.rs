@@ -1,10 +1,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used)]
 
-use agents_boxer::{
+use pulsar_boxer::{
     runtime::{DurableReplayTracker, DurableStepLogger, InMemoryDurableLogger},
     swarm::{build_signed_swarm_message, validate_child_handoff, verify_swarm_signature},
 };
-use agents_protocol::{PermissionMask, SwarmTopic};
+use pulsar_protocol::{PermissionMask, SwarmTopic};
 use serde_json::json;
 
 fn parent_permission_mask() -> PermissionMask {

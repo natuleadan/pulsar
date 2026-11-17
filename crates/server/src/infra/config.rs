@@ -57,7 +57,7 @@ impl InfrastructureMode {
 /// Configuration validation failures.
 #[derive(Debug, Error)]
 pub enum ConfigError {
-    #[error("AGENTS_JWT_SECRET must be at least 32 bytes in production")]
+    #[error("PULSAR_JWT_SECRET must be at least 32 bytes in production")]
     WeakJwtSecret,
     #[error("DATABASE_URL must be configured in production")]
     MissingDatabaseUrl,
@@ -205,11 +205,11 @@ impl ServerConfig {
             None => Ok(def),
         };
 
-        let env = EnvironmentMode::parse(&env_or_local("AGENTS_ENV", "development"));
+        let env = EnvironmentMode::parse(&env_or_local("PULSAR_ENV", "development"));
         let infrastructure_mode =
             InfrastructureMode::parse(&env_or_local("INFRASTRUCTURE_MODE", "self-hosted"));
 
-        let raw_secret = opt("AGENTS_JWT_SECRET");
+        let raw_secret = opt("PULSAR_JWT_SECRET");
         let jwt_secret = match raw_secret {
             Some(secret) if secret.len() >= 32 => secret,
             Some(_) if env.is_production() => return Err(ConfigError::WeakJwtSecret),
@@ -258,7 +258,7 @@ impl ServerConfig {
             ));
         }
 
-        let trusted_origins = env_or_local("AGENTS_TRUSTED_ORIGINS", "http://127.0.0.1:5173")
+        let trusted_origins = env_or_local("PULSAR_TRUSTED_ORIGINS", "http://127.0.0.1:5173")
             .split(',')
             .map(str::trim)
             .filter(|s| !s.is_empty())
@@ -268,22 +268,22 @@ impl ServerConfig {
         Ok(Self {
             env,
             infrastructure_mode,
-            bind_addr: env_or_local("AGENTS_BIND_ADDR", "127.0.0.1:8080"),
-            public_url: env_or_local("AGENTS_PUBLIC_URL", "http://127.0.0.1:8080"),
+            bind_addr: env_or_local("PULSAR_BIND_ADDR", "127.0.0.1:8080"),
+            public_url: env_or_local("PULSAR_PUBLIC_URL", "http://127.0.0.1:8080"),
             trusted_origins,
             jwt_secret,
-            cluster_secret: opt("AGENTS_CLUSTER_SECRET")
+            cluster_secret: opt("PULSAR_CLUSTER_SECRET")
                 .or_else(|| opt("BOXER_CLUSTER_SECRET"))
                 .unwrap_or_else(|| "dev-boxer-cluster-secret".to_owned()),
-            jwt_access_ttl_secs: parse_u64("AGENTS_JWT_ACCESS_TTL_SECS", 900)?,
-            refresh_ttl_secs: parse_u64("AGENTS_REFRESH_TTL_SECS", 2_592_000)?,
-            admin_email: opt("AGENTS_ADMIN_EMAIL"),
-            admin_initial_password: opt("AGENTS_ADMIN_INITIAL_PASSWORD"),
+            jwt_access_ttl_secs: parse_u64("PULSAR_JWT_ACCESS_TTL_SECS", 900)?,
+            refresh_ttl_secs: parse_u64("PULSAR_REFRESH_TTL_SECS", 2_592_000)?,
+            admin_email: opt("PULSAR_ADMIN_EMAIL"),
+            admin_initial_password: opt("PULSAR_ADMIN_INITIAL_PASSWORD"),
             database_url,
             database_max_connections: parse_u32("DATABASE_MAX_CONNECTIONS", 20)?,
             valkey_url: opt("VALKEY_URL"),
             nats_url: opt("NATS_URL"),
-            nats_cluster_name: env_or_local("NATS_CLUSTER_NAME", "agents-cluster"),
+            nats_cluster_name: env_or_local("NATS_CLUSTER_NAME", "pulsar-cluster"),
             upstash_redis_url,
             qstash_url,
             qstash_token,
@@ -294,7 +294,7 @@ impl ServerConfig {
             upstash_blob_token,
             s3_endpoint: opt("S3_ENDPOINT").or_else(|| opt("RUSTFS_ENDPOINT")),
             s3_public_endpoint: opt("S3_PUBLIC_ENDPOINT").or_else(|| opt("RUSTFS_PUBLIC_ENDPOINT")),
-            s3_bucket: env_or_local("S3_BUCKET", "agents-artifacts"),
+            s3_bucket: env_or_local("S3_BUCKET", "pulsar-artifacts"),
             s3_region: env_or_local("S3_REGION", "us-east-1"),
             s3_access_key: opt("S3_ACCESS_KEY").or_else(|| opt("RUSTFS_ACCESS_KEY")),
             s3_secret_key: opt("S3_SECRET_KEY").or_else(|| opt("RUSTFS_SECRET_KEY")),
@@ -303,11 +303,11 @@ impl ServerConfig {
             deepinfra_token,
             deepseek_api_key,
             ai_gateway_api_key,
-            rate_limit_max_requests: parse_u64("AGENTS_RATE_LIMIT_MAX", 120)?,
-            rate_limit_window_secs: parse_u64("AGENTS_RATE_LIMIT_WINDOW_SECS", 60)?,
-            max_concurrent_global: parse_usize("AGENTS_MAX_CONCURRENT_GLOBAL", 64)?,
-            max_concurrent_session: parse_usize("AGENTS_MAX_CONCURRENT_SESSION", 4)?,
-            audit_retention_secs: parse_u64("AGENTS_AUDIT_RETENTION_SECS", 2_592_000)?,
+            rate_limit_max_requests: parse_u64("PULSAR_RATE_LIMIT_MAX", 120)?,
+            rate_limit_window_secs: parse_u64("PULSAR_RATE_LIMIT_WINDOW_SECS", 60)?,
+            max_concurrent_global: parse_usize("PULSAR_MAX_CONCURRENT_GLOBAL", 64)?,
+            max_concurrent_session: parse_usize("PULSAR_MAX_CONCURRENT_SESSION", 4)?,
+            audit_retention_secs: parse_u64("PULSAR_AUDIT_RETENTION_SECS", 2_592_000)?,
         })
     }
 
@@ -330,7 +330,7 @@ impl ServerConfig {
             database_max_connections: 5,
             valkey_url: None,
             nats_url: None,
-            nats_cluster_name: "agents-test".to_owned(),
+            nats_cluster_name: "pulsar-test".to_owned(),
             upstash_redis_url: None,
             qstash_url: None,
             qstash_token: None,
@@ -341,7 +341,7 @@ impl ServerConfig {
             upstash_blob_token: None,
             s3_endpoint: None,
             s3_public_endpoint: None,
-            s3_bucket: "agents-artifacts".to_owned(),
+            s3_bucket: "pulsar-artifacts".to_owned(),
             s3_region: "us-east-1".to_owned(),
             s3_access_key: None,
             s3_secret_key: None,
@@ -374,23 +374,23 @@ mod tests {
     #[test]
     fn production_mode_fails_closed_without_strong_secret_and_database() {
         let weak = ServerConfig::from_lookup(|k| match k {
-            "AGENTS_ENV" => Some("production".to_owned()),
-            "AGENTS_JWT_SECRET" => Some("too-short".to_owned()),
+            "PULSAR_ENV" => Some("production".to_owned()),
+            "PULSAR_JWT_SECRET" => Some("too-short".to_owned()),
             _ => None,
         });
         assert!(matches!(weak, Err(ConfigError::WeakJwtSecret)));
 
         let missing_db = ServerConfig::from_lookup(|k| match k {
-            "AGENTS_ENV" => Some("production".to_owned()),
-            "AGENTS_JWT_SECRET" => Some("a-very-long-production-secret-over-32-bytes".to_owned()),
+            "PULSAR_ENV" => Some("production".to_owned()),
+            "PULSAR_JWT_SECRET" => Some("a-very-long-production-secret-over-32-bytes".to_owned()),
             _ => None,
         });
         assert!(matches!(missing_db, Err(ConfigError::MissingDatabaseUrl)));
 
         let valid = ServerConfig::from_lookup(|k| match k {
-            "AGENTS_ENV" => Some("production".to_owned()),
-            "AGENTS_JWT_SECRET" => Some("a-very-long-production-secret-over-32-bytes".to_owned()),
-            "DATABASE_URL" => Some("postgres://user:pass@localhost/agents".to_owned()),
+            "PULSAR_ENV" => Some("production".to_owned()),
+            "PULSAR_JWT_SECRET" => Some("a-very-long-production-secret-over-32-bytes".to_owned()),
+            "DATABASE_URL" => Some("postgres://user:pass@localhost/pulsar".to_owned()),
             _ => None,
         });
         assert!(valid.is_ok());
@@ -438,9 +438,9 @@ mod tests {
         assert!(valid.is_ok());
 
         let mixed_cloud = ServerConfig::from_lookup(|k| match k {
-            "AGENTS_ENV" => Some("production".to_owned()),
+            "PULSAR_ENV" => Some("production".to_owned()),
             "INFRASTRUCTURE_MODE" => Some("managed-cloud".to_owned()),
-            "AGENTS_JWT_SECRET" => Some("a-very-long-production-secret-over-32-bytes".to_owned()),
+            "PULSAR_JWT_SECRET" => Some("a-very-long-production-secret-over-32-bytes".to_owned()),
             "DATABASE_URL" => Some("postgres://user:pass@ep-test.neon.tech/db".to_owned()),
             "REDIS_URL" => Some("rediss://default:token@skunk.upstash.io:6379".to_owned()),
             "QSTASH_URL" => Some("https://qstash.upstash.io".to_owned()),

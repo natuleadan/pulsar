@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use agents_protocol::{EventEnvelope, InteractionMode, TokenPair};
-use agents_styles::prelude::*;
+use pulsar_protocol::{EventEnvelope, InteractionMode, TokenPair};
+use pulsar_styles::prelude::*;
 
 use super::{data_views, login, panels};
 use crate::core::ClientError;
@@ -217,7 +217,7 @@ impl ClientController {
                 dispatch(&mut self.state, AppAction::AppendStreamChunk(text.clone()));
             }
         }
-        if let agents_protocol::StreamPayload::PreviewPublished(route) = env.payload {
+        if let pulsar_protocol::StreamPayload::PreviewPublished(route) = env.payload {
             dispatch(
                 &mut self.state,
                 AppAction::SetPreview(PreviewEntry {

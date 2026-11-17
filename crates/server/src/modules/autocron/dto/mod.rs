@@ -1,8 +1,8 @@
 //! Validated HTTP DTOs for Autocron scheduling, execution, toggling, and webhook triggers.
 
-use agents_protocol::TriggerKind;
 use garde::Validate;
 use ironic::OpenApiSchema;
+use pulsar_protocol::TriggerKind;
 use serde::Deserialize;
 use serde_json::Value;
 

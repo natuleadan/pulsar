@@ -20,11 +20,11 @@ use std::{
     time::Duration,
 };
 
-use agents_protocol::{
+use futures_util::StreamExt;
+use pulsar_protocol::{
     CodecId, EventEnvelope, FencingToken, SteeringMessage, StopReason, StreamPayload, TaskRequest,
     TaskResult, TaskState, TaskStreamEvent, WorkerStatus,
 };
-use futures_util::StreamExt;
 use serde::Deserialize;
 use tokio::sync::{Mutex, Semaphore, mpsc, watch};
 use tracing::{error, info, warn};
@@ -132,12 +132,12 @@ impl BoxerDaemon {
             Some("daemon ready"),
         )
         .await;
-        info!(node_id = %self.config.node_id, "agents-boxer listening on NATS queue group boxer-workers");
+        info!(node_id = %self.config.node_id, "pulsar-boxer listening on NATS queue group boxer-workers");
 
         loop {
             tokio::select! {
                 _ = tokio::signal::ctrl_c() => {
-                    info!("received shutdown signal; stopping agents-boxer");
+                    info!("received shutdown signal; stopping pulsar-boxer");
                     break;
                 }
                 Some(cancel_msg) = cancel_sub.next() => {

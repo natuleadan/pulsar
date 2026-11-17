@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use agents_boxer::{
+use pulsar_boxer::{
     error::BoxerError,
     leases::CleanupDropGuard,
     sandbox::{
@@ -52,7 +52,7 @@ fn test_sandbox_profile_vfs_escape_rejection() {
 
 #[test]
 fn test_sandbox_profile_isolation_modes() {
-    let ws = Path::new("/tmp/agents-boxes/test-session");
+    let ws = Path::new("/tmp/pulsar-boxes/test-session");
     let skills = Path::new("/opt/skills");
 
     // Landlock Linux profile verification
@@ -63,7 +63,7 @@ fn test_sandbox_profile_isolation_modes() {
     // Workspace write is allowed
     assert!(
         landlock
-            .verify_path_access(Path::new("/tmp/agents-boxes/test-session/output.txt"), true)
+            .verify_path_access(Path::new("/tmp/pulsar-boxes/test-session/output.txt"), true)
             .is_ok()
     );
 
@@ -133,7 +133,7 @@ fn test_host_mode_fencing_fails_closed() {
 #[test]
 fn test_scratch_cleanup_drop_guard() {
     let scratch_path =
-        std::env::temp_dir().join(format!("agents-test-scratch-{}", uuid::Uuid::new_v4()));
+        std::env::temp_dir().join(format!("pulsar-test-scratch-{}", uuid::Uuid::new_v4()));
     std::fs::create_dir_all(&scratch_path).expect("create scratch dir");
     let test_file = scratch_path.join("artifact.log");
     std::fs::write(&test_file, b"ephemeral test output").expect("write test file");

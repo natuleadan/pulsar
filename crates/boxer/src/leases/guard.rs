@@ -66,7 +66,7 @@ pub struct SandboxResources {
     pub container_name: Option<String>,
     pub preview_route_file: Option<std::path::PathBuf>,
     pub cleaned: Arc<AtomicBool>,
-    pub lifecycle: agents_protocol::AgentLifecyclePolicy,
+    pub lifecycle: pulsar_protocol::AgentLifecyclePolicy,
 }
 
 impl SandboxResources {
@@ -78,12 +78,12 @@ impl SandboxResources {
             container_name: None,
             preview_route_file: None,
             cleaned: Arc::new(AtomicBool::new(false)),
-            lifecycle: agents_protocol::AgentLifecyclePolicy::default(),
+            lifecycle: pulsar_protocol::AgentLifecyclePolicy::default(),
         }
     }
 
     #[must_use]
-    pub fn with_lifecycle(mut self, lifecycle: agents_protocol::AgentLifecyclePolicy) -> Self {
+    pub fn with_lifecycle(mut self, lifecycle: pulsar_protocol::AgentLifecyclePolicy) -> Self {
         self.lifecycle = lifecycle;
         self
     }

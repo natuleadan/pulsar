@@ -7,7 +7,8 @@ use std::{
     time::Duration,
 };
 
-use agents_boxer::{
+use clap::Parser;
+use pulsar_boxer::{
     artifacts::{ArtifactPackager, ArtifactQuota, sha256_hex},
     config::{BoxerCli, BoxerConfig, now_ms},
     daemon::{BoxerDaemon, InMemoryBoxerBus},
@@ -18,12 +19,11 @@ use agents_boxer::{
     },
     preview::{PreviewPublishRequest, TraefikFileProvider},
 };
-use agents_protocol::{
+use pulsar_protocol::{
     AgentLifecyclePolicy, ExecOptions, FollowUpMessage, InteractionMode, IsolationKind,
     PermissionMask, RuntimeKind, SandboxProfile, SetupMode, SteeringMessage, StopReason,
     StreamPayload, TaskRequest, TaskState, ToolPhase, TurnDecision, WorkerStatus,
 };
-use clap::Parser;
 use serde_json::Value;
 use tokio::sync::{mpsc, watch};
 
@@ -330,8 +330,8 @@ async fn dual_loop_enforces_plan_mode_and_processes_steering_and_followups() -> 
             session_id: "s-act".to_owned(),
             task_id: "t-act".to_owned(),
             content: "steered-target".to_owned(),
-            kind: agents_protocol::SteeringInterventionKind::ImmediateIntervention,
-            fencing_token: Some(agents_protocol::FencingToken(1)),
+            kind: pulsar_protocol::SteeringInterventionKind::ImmediateIntervention,
+            fencing_token: Some(pulsar_protocol::FencingToken(1)),
             emitted_at_ms: now_ms(),
         })
         .await?;
@@ -395,7 +395,7 @@ async fn boxer_daemon_executes_hermetic_task_emits_telemetry_and_completes_fence
     let dyn_dir = unique_temp_dir("boxer-daemon-traefik")?;
 
     let mut cli = BoxerCli::parse_from([
-        "agents-boxer",
+        "pulsar-boxer",
         "--node-id",
         "boxer-hermetic-01",
         "--runtime",

@@ -1,8 +1,7 @@
-//! Static Web UI asset routes backed cleanly by [`agents_styles`] token & bundle generators.
+//! Static Web UI asset routes backed cleanly by [`pulsar_styles`] token & bundle generators.
 
 use std::sync::{Arc, OnceLock};
 
-use agents_styles::nsh::{web_assets, web_script};
 use axum::{
     Router,
     body::Body,
@@ -11,6 +10,7 @@ use axum::{
     response::{Html, IntoResponse, Response},
     routing::get,
 };
+use pulsar_styles::nsh::{web_assets, web_script};
 use tower::ServiceExt;
 
 use crate::modules::{
@@ -110,7 +110,7 @@ async fn metrics_security_middleware(
             || headers.contains_key("x-forwarded-host")
             || headers.contains_key("cf-connecting-ip");
 
-        let is_prod = std::env::var("AGENTS_ENV").unwrap_or_default() == "production";
+        let is_prod = std::env::var("PULSAR_ENV").unwrap_or_default() == "production";
 
         let token = headers
             .get("authorization")
@@ -126,7 +126,7 @@ async fn metrics_security_middleware(
             .and_then(|v| v.to_str().ok())
             .map(str::trim);
 
-        let metrics_token = std::env::var("AGENTS_METRICS_TOKEN").ok();
+        let metrics_token = std::env::var("PULSAR_METRICS_TOKEN").ok();
 
         let is_authed = if let Some(t) = token {
             if let Some(ref m_tok) = metrics_token {
@@ -142,7 +142,7 @@ async fn metrics_security_middleware(
 
         if (has_forwarded || is_prod) && !is_authed {
             tracing::warn!(
-                target: "agents.security.metrics",
+                target: "pulsar.security.metrics",
                 path,
                 "unauthorized metrics scrape attempt rejected (401)"
             );
@@ -167,7 +167,7 @@ async fn metrics_security_middleware(
             .map(str::trim);
 
         let is_admin = if let Some(t) = token {
-            if let Ok(admin_tok) = std::env::var("AGENTS_METRICS_TOKEN") {
+            if let Ok(admin_tok) = std::env::var("PULSAR_METRICS_TOKEN") {
                 t == admin_tok
             } else {
                 !t.is_empty()
@@ -178,19 +178,19 @@ async fn metrics_security_middleware(
 
         let body = if is_admin {
             serde_json::to_string(&serde_json::json!({
-                "service": "agents-server",
+                "service": "pulsar-server",
                 "version": env!("CARGO_PKG_VERSION"),
                 "status": "ok",
                 "diagnostics": {
                     "protocol_version": "1.0",
                     "features": ["auth", "jwt", "metrics", "resilience", "telemetry", "logging", "openapi", "multipart", "security"],
-                    "environment": std::env::var("AGENTS_ENV").unwrap_or_else(|_| "development".into())
+                    "environment": std::env::var("PULSAR_ENV").unwrap_or_else(|_| "development".into())
                 }
             }))
             .unwrap_or_default()
         } else {
             serde_json::to_string(&serde_json::json!({
-                "service": "agents-server",
+                "service": "pulsar-server",
                 "version": env!("CARGO_PKG_VERSION"),
                 "status": "ok"
             }))
@@ -212,7 +212,7 @@ async fn dispatch_lazy_mcp(req: AxumRequest<Body>, cell: Arc<OnceLock<McpHttpSta
     let started = std::time::Instant::now();
     let method = req.method().clone();
     let Some(state) = cell.get() else {
-        tracing::warn!(target: "agents.mcp.access", method = %method, "MCP endpoint called before initialization");
+        tracing::warn!(target: "pulsar.mcp.access", method = %method, "MCP endpoint called before initialization");
         return (StatusCode::SERVICE_UNAVAILABLE, "mcp initializing").into_response();
     };
     let sub_router = protected_mcp_router(state.clone());
@@ -221,14 +221,14 @@ async fn dispatch_lazy_mcp(req: AxumRequest<Body>, cell: Arc<OnceLock<McpHttpSta
             let duration_ms = started.elapsed().as_millis();
             let status = resp.status().as_u16();
             if resp.status().is_server_error() {
-                tracing::error!(target: "agents.mcp.access", method = %method, status, duration_ms, "mcp request failed");
+                tracing::error!(target: "pulsar.mcp.access", method = %method, status, duration_ms, "mcp request failed");
             } else {
-                tracing::info!(target: "agents.mcp.access", method = %method, status, duration_ms, "mcp request completed");
+                tracing::info!(target: "pulsar.mcp.access", method = %method, status, duration_ms, "mcp request completed");
             }
             resp
         }
         Err(err) => {
-            tracing::error!(target: "agents.mcp.access", method = %method, error = %err, "mcp sub-router dispatch failed");
+            tracing::error!(target: "pulsar.mcp.access", method = %method, error = %err, "mcp sub-router dispatch failed");
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
