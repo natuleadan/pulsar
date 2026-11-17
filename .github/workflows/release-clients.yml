@@ -295,6 +295,15 @@ jobs:
               --assets-dir release-assets
           fi
 
+      - name: Tag nightly with short SHA
+        if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          git tag "dev-${SHORT_SHA}"
+          git push origin "dev-${SHORT_SHA}"
+
       - name: Publish dev nightly prerelease
         if: github.event_name == 'push' && github.ref == 'refs/heads/dev'
         uses: softprops/action-gh-release@v3
