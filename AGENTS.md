@@ -1,85 +1,52 @@
-# AGENTS.md
+# AGENTS.md — Pulsar
 
-Technical instructions for agents and contributors working in `natuleadan/agents`.
+Technical orientation for agents and contributors. The README describes the
+product; this file explains how to build, verify and work in the repository.
 
 ## Overview
 
-`natuleadan/agents` is a distributed, self-sustaining Rust agent harness
-combining modular Ironic API orchestration, Boxer sandbox execution, NATS
-JetStream swarm coordination, Valkey ephemeral state, PostgreSQL persistence,
-Traefik ephemeral app previews, and multi-platform NSH clients.
+Pulsar is a self-sustaining distributed Rust agent harness: modular Ironic-style
+orchestration in `server`, sandboxed execution in `boxer`, shared wire contracts
+in `protocol`, zero-sudo provisioning in `installer`, and multi-platform clients.
 
-## Repository Layout
+## Repository layout
 
 | Path | Purpose |
 |---|---|
-| `crates/protocol` | Shared wire contracts, named codecs, JSON-RPC, HTTP DTOs, frozen fixtures |
-| `crates/styles` | Reusable design tokens, component specs, and NSH layout primitives (`publish = false`) |
-| `crates/server` | Orchestrator daemon (`ironic` NestJS module tree, Postgres, Valkey, NATS, MCP, Autocron) |
-| `crates/boxer` | Sandbox supervisor daemon, `Runtime x Isolation` backends, Traefik route publisher, native loop |
-| `crates/installer` | VPS provisioning CLI orchestrating external `.sh` hardening scripts |
-| `crates/client` | `client-core`, `client-tui`, and multi-platform `nsh` GUI (`Server` & `Third-Party` modes) |
-| `helpers/deploy/scripts/` | Reusable POSIX/Bash VPS hardening and service bootstrap scripts (never hardcoded inside Rust) |
-| `helpers/tools/` | Release planning (`release-plan.ts`), script validation (`check-scripts.mjs`), and notice generator (`third-party-notices.mjs`) |
-| `.github/` | CODEOWNERS, Dependabot, CI validation, and multi-platform release workflows |
+| `crates/protocol` | Shared wire contracts, named codecs, JSON-RPC and HTTP DTOs |
+| `crates/server` | Orchestrator daemon: modules, PostgreSQL, Valkey, NATS, MCP and Autocron |
+| `crates/boxer` | Sandbox supervisor: leases, isolation backends, egress proxy and previews |
+| `crates/installer` | Provisioning CLI that runs audited deployment scripts |
+| `crates/client` | Client core, reactive terminal UI and multi-platform shell |
+| `crates/styles` | Design tokens and layout primitives |
+| `helpers/deploy/scripts/` | POSIX/Bash provisioning and service bootstrap scripts |
+| `helpers/tools/` | Script validation, release planning and notice generation |
+
+Dependencies point one way: `protocol` has no workspace dependencies; `server`,
+`boxer`, `installer` and `client` depend on it, never on each other.
 
 ## Development
 
-Clone the repository and run `pnpm install` to install Husky hooks and
-`commitlint`. Always use `pnpm` (never `npm` or `npx`).
+Use `pnpm` (never `npm` or `npx`). Install hooks with `pnpm install`, then run:
 
-```bash
-pnpm install
+```sh
 pnpm validate
 ```
 
-## Validation
+This is the single gate before pushing. It runs formatting, clippy with
+`-D warnings`, the full workspace test suite, script validation and repository
+hygiene checks. Checks emit `PASS`, `FAIL` or `SKIP` and fail on any error.
 
-`pnpm validate` is the single gate before pushing and enforces:
+## Conventions
 
-- `cargo fmt --all -- --check` passes cleanly.
-- `cargo clippy --workspace --all-targets -- -D warnings` passes with zero warnings.
-- `cargo test --workspace` passes completely.
-- `node helpers/tools/check-scripts.mjs` validates all `helpers/deploy/scripts/*.sh` (`bash -n`, `shellcheck`, `shfmt`, `<= 500` lines).
-- `node helpers/tools/release-plan.ts --check` matches `package.json` and `CHANGELOG.md`.
-- `node helpers/tools/third-party-notices.mjs --check` matches `ThirdPartyNotices.txt`.
-
-Repository hygiene rules (each `.rs`, `.ts`, and `.sh` file `<= 500` lines,
-`publish = false` on all workspace crates, no hardcoded paths or secrets) also
-remain mandatory across every module.
-
-## Architecture & Module Rules
-
-- **Ironic NestJS-style modules (`crates/server`)**: Organize each domain under `src/modules/<domain>/{mod.rs,controller/,services/,repositories/,dto/,entities/}`. Controllers stay thin; business logic lives in services; database queries live in repositories.
-- **One-way dependencies**: `protocol` has zero workspace dependencies. `server`, `boxer`, `installer`, and `client` depend on `protocol`, never circularly on each other.
-- **No third-party copying**: Never copy code, assets, or copy from studied repositories; reimplement clean strategies in idiomatic Rust.
-- **Rust toolchain & security**: CI targets stable Rust (`1.100.0+` in `ubuntu-24.04`) with Cargo `min-publish-age` dependency cooldowns and OWASP Top 10:2025 / OWASP ASI 2026 guardrails (Argon2id + JWT, SHA-256 hashed opaque tokens, fail-closed sandbox isolation, `DropGuard` resource cleanup).
-- **Strict English**: All tracked files, identifiers, comments, documentation, and commit messages are written in English.
-
-## Branches
-
-- `main` is the protected release branch; merges trigger tagging and release artifacts.
-- `dev` is the protected integration branch where completed feature PRs land incrementally before consolidated releases to `main`.
-- Work items live on short-lived branches (`feat/<scope>`, `fix/<scope>`, `docs/<scope>`, `ci/<scope>`) and reach `dev` (or `main`) exclusively through pull requests reviewed manually by `@leojara95`.
-
-## Commits
-
-Format: `type(scope): description`, lowercase, in English.
-
-- Header has 3 to 7 words, counting `type(scope):`.
-- Maximum 100 characters, no trailing period.
-- Blank line after the header.
-- At least 3 bullets formatted `- **Label**: body`, each body with 3 to 7 words.
-- Allowed scopes: `client`, `server`, `boxer`, `installer`, `protocol`, `tools`, `docs`, `ci`, `workflow`, `hooks`, `release`, `license`, `deps`.
-- Never include `Co-authored-by`.
-
-## Releases
-
-Versions derive from conventional commits since the last `v*` tag:
-
-- `fix`, `perf`, and `revert` bump patch.
-- `feat` bumps minor.
-- `upgrade` or a breaking change bumps major.
-- `docs`, `ci`, `chore`, `test`, `style`, and `refactor` do not trigger a release.
-
-Before opening or updating a functional PR toward `main`, run `pnpm release:prepare` to update `package.json` and `CHANGELOG.md`, then verify with `pnpm release:check`.
+- English across source, docs, file names, output and commits.
+- Comments are written in English and only where they explain non-obvious code;
+  longer explanation belongs in `docs/`.
+- Source files stay within 500 lines.
+- Never print secrets; `.env.example` holds placeholders only.
+- Use short-lived branches (`feat/...`, `fix/...`, `docs/...`), open a pull
+  request against `dev` and consolidate into `main` after review. Never rewrite
+  published history.
+- Commit format: `type(scope): description`, scope in English, 3–7 words, a body
+  with at least three bullets `- **Title**: body` and one newline between them.
+  Author `leojara95`; never add a `Co-authored-by` trailer.
