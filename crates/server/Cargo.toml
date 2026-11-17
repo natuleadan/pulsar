@@ -20,7 +20,6 @@ path = "benches/ironic_pipeline.rs"
 harness = false
 
 [dependencies]
-agents-bridge = { path = "../bridge" }
 agents-protocol = { path = "../protocol", features = ["openapi"] }
 agents-styles = { path = "../styles" }
 a2a = { package = "a2a-lf", version = "0.4.2" }

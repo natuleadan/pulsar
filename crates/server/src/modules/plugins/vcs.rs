@@ -64,14 +64,20 @@ pub struct MockVcsState {
 #[derive(Debug, Clone)]
 pub struct VcsProxy {
     // Encrypted/secure token lives on the server orchestrator; never exposed to Boxer
-    _server_token: String,
+    server_token: String,
+    http: reqwest::Client,
     mock_state: Arc<RwLock<MockVcsState>>,
 }
 
 impl VcsProxy {
+    #[must_use]
     pub fn new(server_token: impl Into<String>) -> Self {
         Self {
-            _server_token: server_token.into(),
+            server_token: server_token.into(),
+            http: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .unwrap_or_default(),
             mock_state: Arc::new(RwLock::new(MockVcsState::default())),
         }
     }
@@ -83,36 +89,196 @@ impl VcsProxy {
 
     pub async fn list_pull_requests(
         &self,
-        _repo: &str,
+        repo: &str,
     ) -> Result<Vec<PullRequestSummary>, VcsError> {
         let state = self.mock_state.read().await;
         if state.is_rate_limited {
             return Err(VcsError::RateLimited(state.rate_limit_reset_secs));
         }
-        Ok(state.prs.clone())
+        if !state.prs.is_empty() || self.server_token.is_empty() {
+            return Ok(state.prs.clone());
+        }
+        drop(state);
+
+        let url = format!("https://api.github.com/repos/{repo}/pulls");
+        let resp = self
+            .http
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.server_token))
+            .header("User-Agent", "sovereign-agents-server")
+            .header("Accept", "application/vnd.github+json")
+            .send()
+            .await
+            .map_err(|e| VcsError::NetworkError(e.to_string()))?;
+
+        let status = resp.status();
+        if status == reqwest::StatusCode::FORBIDDEN
+            || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+        {
+            return Err(VcsError::RateLimited(60));
+        }
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(VcsError::Unauthorized);
+        }
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Err(VcsError::NotFound(repo.to_owned()));
+        }
+        if !status.is_success() {
+            return Err(VcsError::NetworkError(format!(
+                "status {}",
+                status.as_u16()
+            )));
+        }
+
+        let items: Vec<serde_json::Value> = resp
+            .json()
+            .await
+            .map_err(|e| VcsError::NetworkError(e.to_string()))?;
+
+        let prs = items
+            .into_iter()
+            .filter_map(|item| {
+                let number = item.get("number")?.as_u64()?;
+                let title = item.get("title")?.as_str()?.to_owned();
+                let author = item.pointer("/user/login")?.as_str()?.to_owned();
+                let state = item.get("state")?.as_str()?.to_owned();
+                let head_sha = item.pointer("/head/sha")?.as_str()?.to_owned();
+                Some(PullRequestSummary {
+                    number,
+                    title,
+                    author,
+                    state,
+                    head_sha,
+                })
+            })
+            .collect();
+
+        Ok(prs)
     }
 
-    pub async fn get_pr_diff(&self, _repo: &str, pr_number: u64) -> Result<String, VcsError> {
+    pub async fn get_pr_diff(&self, repo: &str, pr_number: u64) -> Result<String, VcsError> {
         let state = self.mock_state.read().await;
         if state.is_rate_limited {
             return Err(VcsError::RateLimited(state.rate_limit_reset_secs));
         }
-        match state.diffs.get(&pr_number) {
-            Some(diff) => Ok(diff.clone()),
-            None => Err(VcsError::NotFound(format!("PR #{pr_number}"))),
+        if let Some(diff) = state.diffs.get(&pr_number) {
+            return Ok(diff.clone());
         }
+        if self.server_token.is_empty() {
+            return Err(VcsError::NotFound(format!("PR #{pr_number}")));
+        }
+        drop(state);
+
+        let url = format!("https://api.github.com/repos/{repo}/pulls/{pr_number}");
+        let resp = self
+            .http
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.server_token))
+            .header("User-Agent", "sovereign-agents-server")
+            .header("Accept", "application/vnd.github.v3.diff")
+            .send()
+            .await
+            .map_err(|e| VcsError::NetworkError(e.to_string()))?;
+
+        let status = resp.status();
+        if status == reqwest::StatusCode::FORBIDDEN
+            || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+        {
+            return Err(VcsError::RateLimited(60));
+        }
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(VcsError::Unauthorized);
+        }
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Err(VcsError::NotFound(format!("PR #{pr_number}")));
+        }
+        if !status.is_success() {
+            return Err(VcsError::NetworkError(format!(
+                "status {}",
+                status.as_u16()
+            )));
+        }
+
+        resp.text()
+            .await
+            .map_err(|e| VcsError::NetworkError(e.to_string()))
     }
 
     pub async fn get_check_runs(
         &self,
-        _repo: &str,
+        repo: &str,
         commit_sha: &str,
     ) -> Result<Vec<CheckRunStatus>, VcsError> {
         let state = self.mock_state.read().await;
         if state.is_rate_limited {
             return Err(VcsError::RateLimited(state.rate_limit_reset_secs));
         }
-        Ok(state.checks.get(commit_sha).cloned().unwrap_or_default())
+        if let Some(runs) = state.checks.get(commit_sha) {
+            return Ok(runs.clone());
+        }
+        if self.server_token.is_empty() {
+            return Ok(Vec::new());
+        }
+        drop(state);
+
+        let url = format!("https://api.github.com/repos/{repo}/commits/{commit_sha}/check-runs");
+        let resp = self
+            .http
+            .get(&url)
+            .header("Authorization", format!("Bearer {}", self.server_token))
+            .header("User-Agent", "sovereign-agents-server")
+            .header("Accept", "application/vnd.github+json")
+            .send()
+            .await
+            .map_err(|e| VcsError::NetworkError(e.to_string()))?;
+
+        let status = resp.status();
+        if status == reqwest::StatusCode::FORBIDDEN
+            || status == reqwest::StatusCode::TOO_MANY_REQUESTS
+        {
+            return Err(VcsError::RateLimited(60));
+        }
+        if status == reqwest::StatusCode::UNAUTHORIZED {
+            return Err(VcsError::Unauthorized);
+        }
+        if status == reqwest::StatusCode::NOT_FOUND {
+            return Err(VcsError::NotFound(commit_sha.to_owned()));
+        }
+        if !status.is_success() {
+            return Err(VcsError::NetworkError(format!(
+                "status {}",
+                status.as_u16()
+            )));
+        }
+
+        let parsed: serde_json::Value = resp
+            .json()
+            .await
+            .map_err(|e| VcsError::NetworkError(e.to_string()))?;
+
+        let runs = parsed
+            .get("check_runs")
+            .and_then(serde_json::Value::as_array)
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|cr| {
+                        let name = cr.get("name")?.as_str()?.to_owned();
+                        let status = cr.get("status")?.as_str()?.to_owned();
+                        let conclusion = cr
+                            .get("conclusion")
+                            .and_then(serde_json::Value::as_str)
+                            .map(ToOwned::to_owned);
+                        Some(CheckRunStatus {
+                            name,
+                            status,
+                            conclusion,
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        Ok(runs)
     }
 
     pub fn generate_review_summary(&self, pr_number: u64, diff: &str) -> ReviewSummaryReport {

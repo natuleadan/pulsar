@@ -27,10 +27,12 @@ pub struct StoredRobotState {
 }
 
 /// DI store maintaining external robot registrations and sovereign safety state.
+use super::pairing::{PairedDeviceSession, PairingGateway};
+
 #[derive(Clone, Default)]
 pub struct RobotRegistryStore {
     devices: Arc<RwLock<HashMap<String, StoredRobotState>>>,
-    pub pairing: Arc<agents_bridge::PairingGateway>,
+    pub pairing: Arc<PairingGateway>,
 }
 
 impl RobotRegistryStore {
@@ -38,7 +40,7 @@ impl RobotRegistryStore {
     pub fn new() -> Self {
         Self {
             devices: Arc::new(RwLock::new(HashMap::new())),
-            pairing: Arc::new(agents_bridge::PairingGateway::new()),
+            pairing: Arc::new(PairingGateway::new()),
         }
     }
 }
@@ -348,7 +350,7 @@ impl RobotGatewayService {
         &self,
         device_id: &str,
         pin: &str,
-    ) -> Result<agents_bridge::PairedDeviceSession, ServerError> {
+    ) -> Result<PairedDeviceSession, ServerError> {
         self.store
             .pairing
             .verify_pin_and_pair(device_id, pin, now_ms())

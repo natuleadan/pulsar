@@ -27,6 +27,7 @@ use crate::{
         providers::services::ProviderService,
         secrets::services::SecretService,
         sessions::services::SessionService,
+        skills::services::SkillService,
         tasks::{
             dto::{
                 CompleteTaskDto, LeaseTaskDto, ListTasksQuery, SteerTaskDto, SubmitTaskDto,
@@ -52,6 +53,7 @@ pub struct TaskService {
     audit: Arc<AuditService>,
     providers: Arc<ProviderService>,
     secrets: Arc<SecretService>,
+    skills: Arc<SkillService>,
     events: Arc<AppEventBus>,
 }
 
@@ -154,10 +156,23 @@ impl TaskService {
             .secrets
             .resolve_proxy_credentials(&actor.user_id, Some(&created.session_id))
             .await?;
+        let skills_prompt = self
+            .skills
+            .catalog_for_prompt(4000)
+            .await
+            .unwrap_or_default();
+        let prompt = if skills_prompt.is_empty() {
+            created.prompt.clone()
+        } else {
+            format!(
+                "{}\n\n[Active Skills System Catalog]\n{}",
+                created.prompt, skills_prompt
+            )
+        };
         let nats_req = TaskRequest {
             task_id: created.id.clone(),
             session_id: created.session_id.clone(),
-            prompt: created.prompt.clone(),
+            prompt,
             timeout_seconds: dto.timeout_seconds,
             mode: created.mode,
             fencing_token: None,

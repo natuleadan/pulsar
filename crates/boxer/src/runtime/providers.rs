@@ -249,16 +249,109 @@ impl HttpProviderClient {
             .unwrap_or_default()
             .to_owned();
 
+        let (tool_calls, stop_reason, usage_tokens) = parse_tool_calls_and_reason(&parsed);
+
         Ok(ModelTurnResponse {
             assistant_text,
-            tool_calls: Vec::new(),
-            stop_reason: StopReason::EndTurn,
-            usage_tokens: parsed
-                .pointer("/usage/total_tokens")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
+            tool_calls,
+            stop_reason,
+            usage_tokens,
         })
     }
+}
+
+pub fn parse_tool_calls_and_reason(parsed: &Value) -> (Vec<ToolCallRequest>, StopReason, u64) {
+    let mut tool_calls = Vec::new();
+
+    if let Some(calls) = parsed
+        .pointer("/choices/0/message/tool_calls")
+        .and_then(Value::as_array)
+    {
+        for call in calls {
+            let call_id = call
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_owned();
+            let tool_name = call
+                .pointer("/function/name")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_owned();
+            let input = if let Some(args_str) =
+                call.pointer("/function/arguments").and_then(Value::as_str)
+            {
+                serde_json::from_str(args_str).unwrap_or_else(|_| json!({ "raw": args_str }))
+            } else if let Some(args_val) = call.pointer("/function/arguments") {
+                args_val.clone()
+            } else {
+                Value::Null
+            };
+            if !tool_name.is_empty() {
+                tool_calls.push(ToolCallRequest {
+                    call_id,
+                    tool_name,
+                    input,
+                });
+            }
+        }
+    }
+
+    if let Some(content_items) = parsed.pointer("/content").and_then(Value::as_array) {
+        for item in content_items {
+            if item.get("type").and_then(Value::as_str) == Some("tool_use") {
+                let call_id = item
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_owned();
+                let tool_name = item
+                    .get("name")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_owned();
+                let input = item.get("input").cloned().unwrap_or(Value::Null);
+                if !tool_name.is_empty() {
+                    tool_calls.push(ToolCallRequest {
+                        call_id,
+                        tool_name,
+                        input,
+                    });
+                }
+            }
+        }
+    }
+
+    let finish_reason = parsed
+        .pointer("/choices/0/finish_reason")
+        .and_then(Value::as_str);
+    let anthropic_stop = parsed.pointer("/stop_reason").and_then(Value::as_str);
+
+    let stop_reason = if !tool_calls.is_empty() {
+        StopReason::ToolUse
+    } else if finish_reason == Some("length") || anthropic_stop == Some("max_tokens") {
+        StopReason::Length
+    } else {
+        StopReason::EndTurn
+    };
+
+    let usage_tokens = parsed
+        .pointer("/usage/total_tokens")
+        .and_then(Value::as_u64)
+        .or_else(|| {
+            let inp = parsed
+                .pointer("/usage/input_tokens")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            let out = parsed
+                .pointer("/usage/output_tokens")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+            if inp + out > 0 { Some(inp + out) } else { None }
+        })
+        .unwrap_or(0);
+
+    (tool_calls, stop_reason, usage_tokens)
 }
 
 impl ModelClient for HttpProviderClient {

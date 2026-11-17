@@ -111,3 +111,75 @@ fn provider_registry_and_swarm_asi05_asi07_and_worktree_drop_guard() -> TestResu
     let _ = std::fs::remove_dir_all(&root);
     Ok(())
 }
+
+#[test]
+fn universal_llm_tool_calls_parsing_test() {
+    use agents_boxer::runtime::providers::parse_tool_calls_and_reason;
+    use agents_protocol::StopReason;
+    use serde_json::json;
+
+    // 1. OpenAI / DeepSeek format
+    let openai_payload = json!({
+        "choices": [{
+            "message": {
+                "role": "assistant",
+                "content": "Running command",
+                "tool_calls": [{
+                    "id": "call_123",
+                    "type": "function",
+                    "function": {
+                        "name": "bash",
+                        "arguments": "{\"command\":\"ls -la\"}"
+                    }
+                }]
+            },
+            "finish_reason": "tool_calls"
+        }],
+        "usage": { "total_tokens": 42 }
+    });
+
+    let (calls, stop, tokens) = parse_tool_calls_and_reason(&openai_payload);
+    assert_eq!(calls.len(), 1);
+    assert_eq!(calls[0].tool_name, "bash");
+    assert_eq!(calls[0].call_id, "call_123");
+    assert_eq!(calls[0].input["command"], "ls -la");
+    assert_eq!(stop, StopReason::ToolUse);
+    assert_eq!(tokens, 42);
+
+    // 2. Anthropic tool use format
+    let anthropic_payload = json!({
+        "content": [
+            { "type": "text", "text": "Auditing repository" },
+            {
+                "type": "tool_use",
+                "id": "toolu_abc",
+                "name": "read_file",
+                "input": { "path": "/etc/hosts" }
+            }
+        ],
+        "stop_reason": "tool_use",
+        "usage": { "input_tokens": 10, "output_tokens": 15 }
+    });
+
+    let (calls2, stop2, tokens2) = parse_tool_calls_and_reason(&anthropic_payload);
+    assert_eq!(calls2.len(), 1);
+    assert_eq!(calls2[0].tool_name, "read_file");
+    assert_eq!(calls2[0].call_id, "toolu_abc");
+    assert_eq!(calls2[0].input["path"], "/etc/hosts");
+    assert_eq!(stop2, StopReason::ToolUse);
+    assert_eq!(tokens2, 25);
+
+    // 3. Plain text end turn
+    let plain_payload = json!({
+        "choices": [{
+            "message": { "role": "assistant", "content": "Done" },
+            "finish_reason": "stop"
+        }],
+        "usage": { "total_tokens": 12 }
+    });
+
+    let (calls3, stop3, tokens3) = parse_tool_calls_and_reason(&plain_payload);
+    assert!(calls3.is_empty());
+    assert_eq!(stop3, StopReason::EndTurn);
+    assert_eq!(tokens3, 12);
+}

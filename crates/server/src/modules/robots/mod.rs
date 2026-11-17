@@ -1,9 +1,11 @@
 //! External robot and IoT device ingress gateway module.
 
 pub mod controller;
+pub mod pairing;
 pub mod services;
 
 pub use controller::RobotGatewayController;
+pub use pairing::{PairedDeviceSession, PairingError, PairingGateway};
 pub use services::{RobotGatewayService, RobotRegistryStore};
 
 use ironic::prelude::*;

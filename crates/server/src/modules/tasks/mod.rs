@@ -20,6 +20,7 @@ pub use services::TaskService;
         crate::modules::providers::ProvidersModule,
         crate::modules::secrets::SecretsModule,
         crate::modules::sessions::SessionsModule,
+        crate::modules::skills::SkillsModule,
     ],
     providers = [TaskService],
     controllers = [TasksController],
