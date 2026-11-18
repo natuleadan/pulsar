@@ -1,3 +1,4 @@
+# Build / Rust
 target/
 **/*.rs.bk
 
@@ -6,17 +7,18 @@ node_modules/
 dist/
 pnpm-debug.log*
 
-# Environment and Private files
+# Environment and private files
 .env
 .env.*
 !.env.example
 .local/
 internal/
 
-# Editor / OS
+# Editor / OS / logs
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
 *.swp
+*.log
 /.logs
