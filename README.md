@@ -1,7 +1,7 @@
 <p align="center"><img src="https://raw.githubusercontent.com/natuleadan/.github/main/profile/assets/banners/pulsar.svg" alt="Pulsar Beacon" width="100%" /></p>
 
 <h1 align="center">Pulsar</h1>
-<p align="center"><strong>Sovereign multi-agent harness with decoupled Linux server core and Aurora native rendering over the declarative protocol</strong></p>
+<p align="center"><strong>Sovereign multi-agent harness with decoupled Linux server core and Aurora multi-platform UI</strong></p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Language-Rust_2024-orange?style=flat" alt="Rust 2024" />
@@ -14,19 +14,19 @@
 
 ## 1. What is Pulsar?
 
-Pulsar is a sovereign, clean-slate pure-Rust multi-agent harness and durable swarm orchestrator. Its **server side** runs primarily on Linux and integrates with Orion API contracts and typed schemas and Andromeda over decoupled network protocols (REST, WebSocket/WSS, gRPC)—never via direct Cargo crate dependencies—while its **client side** uses Aurora over those same wire protocols to auto-generate responsive interfaces across **Web, iOS, Android, macOS, and Windows**. Its modular crate architecture also allows constrained, feature-gated edge profiles for diverse microcontrollers and IoT hardware.
+Pulsar is a sovereign, clean-slate pure-Rust multi-agent harness and durable swarm orchestrator. Its **server side** runs primarily on Linux and integrates with an Orion-based service layer and factored schemas, plus Andromeda, over decoupled network protocols (REST, WebSocket/WSS, gRPC)—never via direct Cargo crate dependencies—while its **client side** uses Aurora over those same wire protocols to auto-generate responsive interfaces across **Web, iOS, Android, macOS, and Windows**. Its modular crate architecture also allows constrained, feature-gated edge profiles for diverse microcontrollers and IoT hardware.
 
 ### What is inside
 
 Pulsar implements a layered modular six-file modular monolith (`entity`, `dto`, `repository`, `service`, `controller`, `mod`) inside a pure-Cargo workspace (`crates/core` and `crates/xtask`), verified by eight automated validation gates and a 3-day dependency cooldown.
 
-> **Current scope:** This release ships the native validation harness, the six-file modular reference domain (`modules/math`), and the crate contracts. Transports, sandboxes, domain engines and protocol integrations described below are planned milestones, not shipped capabilities.
+> **Current scope:** This release ships the native validation harness, the six-file modular reference domain (`modules/math`), and the crate contracts. Transports, sandboxes, domain engines and protocol integrations described throughout this document are planned milestones, not shipped capabilities.
 
 ## 2. Why Pulsar?
 
 Most agent frameworks wrap fragile Python or Node.js scripts around LLM loops without durable execution, strict sandboxing, or cross-platform client rendering.
 
-- **Decoupled server integration**: Communicates with Orion-based API contracts and Andromeda host daemons strictly over REST, WSS, or gRPC without direct Cargo coupling.
+- **Decoupled server integration**: Communicates with the Orion-based service layer and Andromeda host daemons strictly over REST, WSS, or gRPC without direct Cargo coupling.
 - **Aurora-powered client side**: Agents emit declarative agent-to-UI JSON payloads over wire protocols, rendered automatically by Aurora across Web, iOS, Android, macOS, and Windows.
 - **Modular edge-ready design**: Strict layer isolation lets feature-gated profiles run lightweight harness subsets across diverse microcontrollers and IoT devices.
 - **Zero formatter drift**: Formatters are excluded from hooks and CI so diffs remain clean and auditable.
@@ -89,12 +89,12 @@ sequenceDiagram
     Ctrl-->>Client: renderViaAurora(declarativeUiJson)
 ```
 
-Operator commands enter through Orion-based network controllers, validate contracts via `dto`, advance durable sessions inside `service` under Andromeda host supervision over wire protocols, and stream declarative UI updates back to Aurora clients.
+Operator commands enter through Orion-based service controllers, validate contracts via `dto`, advance durable sessions inside `service` under Andromeda host supervision over wire protocols, and stream declarative UI updates back to Aurora clients.
 
 ## 7. Status and Roadmap
 
 - **Status**: Initial foundation — validation harness and modular reference skeleton in place; domain implementation in progress.
-- **Milestone 1**: Core durable session store, sandboxed execution, and decoupled REST/WSS/gRPC integration with Orion-based API contracts and Andromeda.
+- **Milestone 1**: Core durable session store, sandboxed execution, and decoupled REST/WSS/gRPC integration with the Orion-based service layer and Andromeda.
 - **Milestone 2**: Aurora declarative client integration across Web, iOS, Android, macOS, and Windows.
 - **Milestone 3**: Constrained multi-microcontroller edge profiles and decoupled Pleaides robotics bridge certification.
 
